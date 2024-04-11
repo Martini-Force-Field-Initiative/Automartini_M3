@@ -134,7 +134,7 @@ python -m auto-martini --sdf guanazole.sdf --mol GUA --top GUA.itp
 ```
 (the name GUA is arbitrary) or use its SMILES code within double quotes
 ```
-python -m auto-martini --smi "N1=C(N)NN=C1N" --mol GUA --top GUA.itp
+python -m auto_martini --smi "N1=C(N)NN=C1N" --mol GUA --top GUA.itp
 ```
 In case no problem arises, it will output the gromacs GUA.itp file:
 ```
@@ -157,7 +157,7 @@ In case no problem arises, it will output the gromacs GUA.itp file:
 ```
 Optionally, the code can also output a corresponding `.gro` file for the coarse-grained coordinates
 ```
-python -m auto-martini --smi "N1=C(N)NN=C1N" --mol GUA --cg gua.gro --top GUA.itp
+python -m auto_martini --smi "N1=C(N)NN=C1N" --mol GUA --cg gua.gro --top GUA.itp
 ```
 Atomistic coordinates can be written using the `--aa output.gro` option.
 
