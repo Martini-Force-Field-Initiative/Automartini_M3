@@ -117,7 +117,7 @@ if args.sdf:
 else:
     mol, _ = gen_molecule_smi(args.smi)
 
-topname=args.molname+".top"
+topname=args.molname+".itp"
 groname=args.molname+".gro"
 #cg = solver.Cg_molecule(mol, args.smi, args.molname, args.dihedrals, args.topfname, args.forcepred)
 cg = solver.Cg_molecule(mol, args.smi, args.molname, args.dihedrals, topname, args.forcepred)
