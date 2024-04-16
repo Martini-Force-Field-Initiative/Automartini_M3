@@ -45,7 +45,6 @@ def output_gro(sites, site_names, molname):
         exit(1)
     gro_out += "{:s} generated from auto_martini\n".format(molname)
     gro_out += "{:5d}\n".format(num_beads)
-    print("in output : ",sites,"\n",site_names)
     for i in range(num_beads):
         gro_out += "{:5d}{:<6s} {:3s}{:5d}{:8.3f}{:8.3f}{:8.3f}\n".format(
             1, #was i +1, but this is GRO file for one molecule, so all beads should be a part of the same molecule
@@ -57,5 +56,4 @@ def output_gro(sites, site_names, molname):
             sites[i][2] / 10.0,
         )
     gro_out += "{:10.5f}{:10.5f}{:10.5f}\n".format(10.0, 10.0, 10.0)
-    #print(gro_out)
     return gro_out

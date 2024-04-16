@@ -259,7 +259,6 @@ class Cg_molecule:
 
                 self.topout = (header_write + atoms_write + bonds_write + angles_write)
                 if len(ring_atoms)>0:
-                    print("len(ring_atoms)>1")
                     if len(ring_atoms[0])>6:
                         vs_write, virtual_sites, vs_bead_coords  = topology.print_virtualsites(cg_beads,ring_atoms,cg_bead_coords)
                     

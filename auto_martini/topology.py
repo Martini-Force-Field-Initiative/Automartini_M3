@@ -33,11 +33,7 @@ from sys import exit
 from auto_martini._version import __version__
 
 from .common import *
-from scipy.spatial.distance import cdist
-from sklearn.cluster import KMeans, AgglomerativeClustering
 import numpy as np
-
-import subprocess as sp
 import random
 
 
@@ -141,7 +137,7 @@ def print_header(molname, mol_smi):
     """Print topology header"""
     logger.debug("Entering print_header()")
 
-    text = "; GENERATED WITH auto_Martini v{} for {}\n".format(__version__, molname)
+    text = "; GENERATED WITH auto_Martini M3FF v{} for {}\n".format(__version__, molname)
 
     info = (
         "; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour\n"

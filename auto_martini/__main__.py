@@ -44,8 +44,8 @@ def checkArgs(args):
     if not args.molname:
         parser.error("run requires --mol")
 
-    if not args.topfname:
-        parser.error("run requires --top")
+    """if not args.topfname:
+        parser.error("run requires --top")"""
 
 
 parser = argparse.ArgumentParser(
@@ -78,33 +78,13 @@ group.add_argument(
 )
 parser.add_argument("--mol", dest="molname", type=str, required=False, help="Name of CG molecule")
 parser.add_argument("--aa", dest="aa", type=str, help="filename of all-atom structure .gro file")
-parser.add_argument(
-    "--cg", dest="cg", type=str, help="filename of coarse-grained structure .gro file"
-)
-parser.add_argument("--top", dest="topfname", type=str, help="filename of output topology file")
-parser.add_argument(
-    "-v",
-    "--verbose",
-    dest="verbose",
-    action="count",
-    default=0,
-    help="increase verbosity",
-)
-parser.add_argument(
-    "--fpred",
-    dest="forcepred",
-    action="store_true",
-    help="Atomic partitioning prediction",
-)
+#parser.add_argument("--cg", dest="cg", type=str, help="filename of coarse-grained structure .gro file")
+#parser.add_argument("--top", dest="topfname", type=str, help="filename of output topology file")
+parser.add_argument("-v","--verbose",dest="verbose",action="count",default=0,help="increase verbosity",)
+parser.add_argument("--fpred",dest="forcepred",action="store_true",help="Atomic partitioning prediction",)
 
-parser.add_argument(
-    "--dih",
-    dest="dihedrals",
-    type=str,
-    default=True,
-    required=False,
-    help="If you don't want dihedrals in topology file, give False",
-)
+parser.add_argument("--dih",dest="dihedrals",type=str,default=True,required=False,
+                    help="If you don't want dihedrals in topology file, give False",)
 
 if len(sys.argv) == 1:
     parser.print_help(sys.stderr)
@@ -137,9 +117,12 @@ if args.sdf:
 else:
     mol, _ = gen_molecule_smi(args.smi)
 
-cg = solver.Cg_molecule(mol, args.smi, args.molname, args.dihedrals, args.topfname, args.forcepred)
+topname=args.molname+".top"
+groname=args.molname+".gro"
+#cg = solver.Cg_molecule(mol, args.smi, args.molname, args.dihedrals, args.topfname, args.forcepred)
+cg = solver.Cg_molecule(mol, args.smi, args.molname, args.dihedrals, topname, args.forcepred)
 
 if args.aa:
     cg.output_aa(args.aa)
-if args.cg:
-    cg.output_cg(args.cg)
+#if args.cg:
+cg.output_cg(groname)
