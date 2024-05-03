@@ -569,7 +569,7 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
         for i in range(len(cgbeads)):
             for j in range(i + 1, len(cgbeads)):
                 dist = np.linalg.norm(cgbead_coords[i] - cgbead_coords[j]) * 0.1
-                if dist < 0.65:
+                if dist < 0.5: #was  0.65
                     # Are atoms part of the same ring
                     in_ring = False
                     for ring in ringatoms:
@@ -578,21 +578,22 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                             break
                     if in_ring:
                         constlist.append([i, j, dist])
+                    
 
                     else:
                         # Check that the bond is not too short
-                        if dist < 0.15:
-                            raise NameError("Bond too short")
+                        if dist < 0.15: raise NameError("Bond too short")
                         # Look for a bond between an atom of i and an atom of j
                         found_connection = False
                         atoms_in_bead_i = []
-                        for aa in partitioning.keys():
-                            if partitioning[aa] == i:
-                                atoms_in_bead_i.append(aa)
+                        for ii in partitioning.keys():
+                            if partitioning[ii] == i:
+                                atoms_in_bead_i.append(ii)
                         atoms_in_bead_j = []
-                        for aa in partitioning.keys():
-                            if partitioning[aa] == j:
-                                atoms_in_bead_j.append(aa)
+                        
+                        for jj in partitioning.keys():
+                            if partitioning[jj] == j:
+                                atoms_in_bead_j.append(jj)
                         for ib in range(len(molecule.GetBonds())):
                             abond = molecule.GetBondWithIdx(ib)
                             if (
@@ -606,37 +607,39 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                         if found_connection:
                             bondlist.append([i, j, dist])
                         else: 
-                            if cpt_ringatoms<7:
+                            if cpt_ringatoms<7 and len(cgbeads)<5:
                                 constlist.append([i, j, dist])
-        for ring in ringatoms:
-            # Only keep one bond between a ring and a given external bead 
-            for i in range(len(cgbeads)):
-                at = cgbeads[i]
-                if at not in ring:
-                    bonds_to_ring = []
+        
+        if ringatoms != []:
+            for ring in ringatoms:
+                # Only keep one bond between a ring and a given external bead 
+                for i in range(len(cgbeads)):
+                    at = cgbeads[i]
+                    if at not in ring:
+                        bonds_to_ring = []
+                        for b in bondlist:
+                            bead = i
+                            if (cgbeads[b[0]] in ring and b[1] == bead) or (
+                                b[0] == bead and cgbeads[b[1]] in ring
+                            ):
+                                bonds_to_ring.append(b)
+                        # keep closest if more than one ring
+                        if cpt_ringatoms>7:
+                            closest_bond = [-1, -1, 1000.0]
+                            for r in range(len(bonds_to_ring)):
+                                if bonds_to_ring[r][2] < closest_bond[2]:
+                                    closest_bond = bonds_to_ring[r]
+                bead_bonded_to_ring = []
+                for i in range(len(cgbeads)):
+                    atoms_in_bead = []
+                    for key, val in six.iteritems(partitioning):
+                        if val == i:
+                            atoms_in_bead.append(key)
                     for b in bondlist:
-                        bead = i
-                        if (cgbeads[b[0]] in ring and b[1] == bead) or (
-                            b[0] == bead and cgbeads[b[1]] in ring
+                        if (cgbeads[b[0]] in ring and b[1] in atoms_in_bead) or (
+                            b[0] in atoms_in_bead and cgbeads[b[1]] in ring
                         ):
-                            bonds_to_ring.append(b)
-                    # keep closest if more than one ring
-                    if cpt_ringatoms>7:
-                        closest_bond = [-1, -1, 1000.0]
-                        for r in range(len(bonds_to_ring)):
-                            if bonds_to_ring[r][2] < closest_bond[2]:
-                                closest_bond = bonds_to_ring[r]
-            bead_bonded_to_ring = []
-            for i in range(len(cgbeads)):
-                atoms_in_bead = []
-                for key, val in six.iteritems(partitioning):
-                    if val == i:
-                        atoms_in_bead.append(key)
-                for b in bondlist:
-                    if (cgbeads[b[0]] in ring and b[1] in atoms_in_bead) or (
-                        b[0] in atoms_in_bead and cgbeads[b[1]] in ring
-                    ):
-                        bead_bonded_to_ring.append(i)
+                            bead_bonded_to_ring.append(i)
         
         # Go through list of constraints. If we find an extra
         # possible constraint between beads that have constraints,
@@ -671,7 +674,7 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                                 in_ring = True
                                 break
                         # If not in bondlist and in the same ring, add the contraint
-                        if not in_bond_list :#and in_ring:
+                        if not in_bond_list and in_ring:
                             constlist.append([i, j, dist])
 
         if not trial:
@@ -854,6 +857,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
                                 < disthres
                             ):
                                 close_enough = True
+
                             already_dih = False
                             for dih in dihed_list:
                                 if dih[0] == l and dih[1] == k and dih[2] == j and dih[3] == i:
@@ -871,7 +875,21 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
                                 angle = 180.0 / math.pi * np.arctan2(sinphi, cosphi)
                                 forc_const = 10.0
                                 dihed_list.append([i, j, k, l, angle, forc_const])
-
+        bead_in_ring_coords={}
+        for nb,bead_nb in enumerate(cgbeads):
+            for ring in ringatoms:
+                if bead_nb in ring: bead_in_ring_coords[nb]=cgbead_coords[nb]
+        
+        ultimate_dihed=[]
+        if len(bead_in_ring_coords) == 5:
+            bead_x_1D={i:x for i,(x,y,z) in enumerate(cgbead_coords) if i in bead_in_ring_coords.keys()}
+            bead_x_1D_sorted=dict(sorted(bead_x_1D.items(), key=lambda x:x[1]))
+            ultimate_dihed=[list(bead_x_1D_sorted.keys())[0],list(bead_x_1D_sorted.keys())[1],list(bead_x_1D_sorted.keys())[3],list(bead_x_1D_sorted.keys())[4], 180.0, 10.0]
+        if len(bead_in_ring_coords) == 4:
+            bead_x_1D={i:x for i,(x,y,z) in enumerate(cgbead_coords) if i in bead_in_ring_coords.keys()}
+            bead_x_1D_sorted=dict(sorted(bead_x_1D.items(), key=lambda x:x[1]))
+            ultimate_dihed=[list(bead_x_1D_sorted.keys())[0],list(bead_x_1D_sorted.keys())[1],list(bead_x_1D_sorted.keys())[2],list(bead_x_1D_sorted.keys())[3], 180.0, 10.0]
+        
         beadlist=[]
         for bead in beadtypes:
             if not bead.startswith('T') and not bead.startswith('S'): beadlist.append('R')
@@ -882,16 +900,18 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
             text = text + ";  i j k l   funct   angle  force.c.\n"
 
             new_dihed_list = []
+            if ultimate_dihed!=[]:new_dihed_list.append(ultimate_dihed)
             for dl in dihed_list:
                 sorted_dl = sorted(dl[:4])
-                first2=dl[0:2]
-                last2=dl[2:4]
+                first3=dl[0:3]
+                last3=dl[1:4]
                 # Check if beads are repeating
-                if any(sorted_dl == sorted(di[:4]) or first2==di[0:2] or first2==di[2:4] or last2==di[0:2] or last2==di[2:4] for di in new_dihed_list):
+                """if any(sorted_dl == sorted(di[:4]) or first3==di[0:3] or first3==di[3:4] or last3==di[0:3] or last3==di[3:4] for di in new_dihed_list):
                     continue
                 # If not repeating, append to the new list
-                else:new_dihed_list.append(dl)
-            
+                else:new_dihed_list.append(dl)"""
+                if not (sorted_dl == sorted(di[:4]) or first3==di[0:3] or first3==di[1:4] or last3==di[0:3] or last3==di[1:4] for di in new_dihed_list):
+                    new_dihed_list.append(dl)
             for d in new_dihed_list:
                 force=read_params(d[4],beadlist[d[0]]+"-"+beadlist[d[1]]+"-"+beadlist[d[2]]+"-"+beadlist[d[3]])
                 if force is None: force=d[5]
@@ -960,10 +980,10 @@ def print_virtualsites(cg_beads,ring_atoms,cg_bead_coords):
         bead_x_1D_sorted=dict(sorted(bead_x_1D.items(), key=lambda x:x[1]))
         bead_nb_1D=[x for x in bead_x_1D_sorted.keys()]
         groups=[]
-        num_groups=-(-(len(bead_numbers))//4)
+        num_groups=-(-(len(bead_numbers))//5) # before : 4
         cpt=0
         while cpt<=num_groups:
-            if bead_nb_1D[:4] not in groups: groups.append(bead_nb_1D[:4]) # add first 4 beads
+            if bead_nb_1D[:5] not in groups: groups.append(bead_nb_1D[:5]) # add first 4 beads
             if len(bead_nb_1D) > 5 : bead_nb_1D=bead_nb_1D[2:] # remove first 2 beads
             cpt+=1
         for vs_nb in range(len(groups)):
@@ -1032,7 +1052,6 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
     modified_bonds_write=bonds_write
     exclusions_net=""
     if len(ring_atoms[0])>4 and len(ring_atoms[0])<10 and len(bead_coords)<6:
-        
         #changing nrexcl to 1 if 1 cycle and max 5 beads
         modified_lines_header=[]
         for line in list(header_write.split("\n")):
@@ -1046,42 +1065,43 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
         #Adding force to constraints 
         modified_lines_bonds=[]
         for line in list(bonds_write.split("\n")):
-            if "1"in line and len(line.split("   "))<7: 
+            if "1" in line and len(line.split("   "))<7: 
                 modified_lines_bonds.append(line+"    1000000")
-            else:modified_lines_bonds.append(line)
+            else: modified_lines_bonds.append(line)
             if line=="[constraints]":
                 modified_lines_bonds.remove(line)
                 txt = "#ifndef FLEXIBLE\n[constraints]\n#endif"
                 modified_lines_bonds.append(txt)
 
         #adding exclusions for two most distant beads in ring
-        remote_dist=0
-        remote_beads = []
-        bead_in_ring_coords={}
-        ring_atoms=ring_atoms[0]
+        if len(bead_coords)>3:
+            remote_dist=0
+            remote_beads = []
+            bead_in_ring_coords={}
+            ring_atoms=ring_atoms[0]
 
-        for nb,bead_nb in enumerate(cg_beads):
-            bead_in_ring_coords[nb+1]=bead_coords[nb]
+            for nb,bead_nb in enumerate(cg_beads):
+                bead_in_ring_coords[nb+1]=bead_coords[nb]
 
-        for nb_bead1, coord1 in bead_in_ring_coords.items():
-            for nb_bead2, coord2 in bead_in_ring_coords.items():
-                dist= math.sqrt((coord1[0]-coord2[0])**2 + (coord1[1]-coord2[1])**2 + (coord1[2]-coord2[2])**2)
+            for nb_bead1, coord1 in bead_in_ring_coords.items():
+                for nb_bead2, coord2 in bead_in_ring_coords.items():
+                    dist= math.sqrt((coord1[0]-coord2[0])**2 + (coord1[1]-coord2[1])**2 + (coord1[2]-coord2[2])**2)
 
-                if dist > remote_dist and nb_bead1!=nb_bead2:
-                    remote_beads=[nb_bead1,nb_bead2]
-                    remote_dist=dist
-        exclusions_net=""
-        exclusions_net = exclusions_net + "\n[exclusions]\n"
-        exclusions_net = exclusions_net + "  " + str(remote_beads[0])+ " " + str(remote_beads[1])
-        exclusions_net=exclusions_net+"\n"
+                    if dist > remote_dist and nb_bead1!=nb_bead2:
+                        remote_beads=[nb_bead1,nb_bead2]
+                        remote_dist=dist
+            exclusions_net=""
+            exclusions_net = exclusions_net + "\n[exclusions]\n"
+            exclusions_net = exclusions_net + "  " + str(remote_beads[0])+ " " + str(remote_beads[1])
+            exclusions_net=exclusions_net+"\n"
 
-        for line in modified_lines_bonds:
-            if line!="" and len(line.split("   "))>6:
-                if str(remote_beads[0]) == line.split("   ")[1] and str(remote_beads[1]) == line.split("   ")[2] :
-                    modified_lines_bonds.remove(line)
-                else:
-                    if str(remote_beads[1]) == line.split("   ")[1] and str(remote_beads[0]) == line.split("   ")[2] :
+            for line in modified_lines_bonds:
+                if line!="" and len(line.split("   "))>6:
+                    if str(remote_beads[0]) == line.split("   ")[1] and str(remote_beads[1]) == line.split("   ")[2] :
                         modified_lines_bonds.remove(line)
+                    else:
+                        if str(remote_beads[1]) == line.split("   ")[1] and str(remote_beads[0]) == line.split("   ")[2] :
+                            modified_lines_bonds.remove(line)
 
 
         modified_bonds_write="\n".join(modified_lines_bonds)
@@ -1136,6 +1156,8 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
     modified_header_write="\n".join(modified_lines_header)+ "\n"
 
     #Adding force to constraints 
+    print(bonds_write)
+    print(dihedrals_write)
     modified_lines_bonds=[]
     for line in list(bonds_write.split("\n")):
         if "1"in line and len(line.split("   "))<7: 
@@ -1151,7 +1173,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
         for nb_bead, coord in enumerate(bead_coords):
             closest_dist=float('inf')
             closest_coord = None
-            closest_beads = []
+            closest_beads = {}
             if nb_bead+1 in virtual_sites.keys(): 
                 vs_coord=coord
                 vs_bead=nb_bead
@@ -1159,15 +1181,25 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                     x,y,z=coord_noVS
                     dist= math.sqrt((x-vs_coord[0])**2 + (y-vs_coord[1])**2 + (z-vs_coord[2])**2)
 
-                    if dist < closest_dist and nb_bead_noVS!=vs_bead:
-                        closest_beads.append(nb_bead_noVS)
+                    if dist < closest_dist and nb_bead_noVS+1 not in virtual_sites.keys() : # nb_bead_noVS!=vs_bead:
+                        closest_beads[nb_bead_noVS]=dist
                         closest_dist=dist
-    for closest_bead in closest_beads:
-        for line in modified_lines_bonds.copy():
-            if len(line.split("   "))>3 and line.split("   ")[-1]==" 1000000" :
-                if str(closest_bead+1) == line.split("   ")[1] or str(closest_bead+1) == line.split("   ")[2]:
-                    if line in modified_lines_bonds : 
-                        modified_lines_bonds.remove(line)
+    closest_bead=list(dict(sorted(closest_beads.items(), key = lambda item: item[1])))[0]
+
+    if len(bead_coords)>5: # for larger molecules 
+        if len(virtual_sites)>1: #need to exclude more bonds if more than 1 VS,
+            for closest_bead in closest_beads.keys():
+                for line in modified_lines_bonds.copy():
+                    if len(line.split("   "))>3 and line.split("   ")[-1]==" 1000000" :
+                        if str(closest_bead+1) == line.split("   ")[1] or str(closest_bead+1) == line.split("   ")[2]:
+                            if line in modified_lines_bonds : 
+                                modified_lines_bonds.remove(line)
+        else:
+            for line in modified_lines_bonds.copy():
+                if len(line.split("   "))>3 and line.split("   ")[-1]==" 1000000" :
+                    if str(closest_bead+1) == line.split("   ")[1] or str(closest_bead+1) == line.split("   ")[2]:
+                        if line in modified_lines_bonds : 
+                            modified_lines_bonds.remove(line)
 
     modified_bonds_write="\n".join(modified_lines_bonds)
 
@@ -1182,26 +1214,42 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                 if angle_line[2] in dihed_line[2:6] and angle_line[3] in dihed_line[2:6] and angle_line[4] in dihed_line[2:6]:
                     if lineA  in modified_lines_angles:modified_lines_angles.remove(lineA)
     
-    #clean angles from interactions with beads dirctly below VS
-    for closest_bead in closest_beads:
-        for line in modified_lines_angles.copy():
-            if len(line.split(" "))>3:
-                if str(closest_bead+1) == line.split(" ")[2] or str(closest_bead+1) == line.split(" ")[3] or str(closest_bead+1) == line.split(" ")[4] :
-                    if line in modified_lines_angles : 
-                        modified_lines_angles.remove(line)
+    #for larger molecules clean angles from interactions with beads dirctly below VS
+    if len(bead_coords)>5 :
+        if len(virtual_sites)>1: #need to exclude more bonds if more than 1 VS,
+            for cb in closest_beads:
+                for line in modified_lines_angles.copy():
+                    if len(line.split(" "))>3:
+                        if str(cb+1) == line.split(" ")[2] or str(cb+1) == line.split(" ")[3] or str(cb+1) == line.split(" ")[4] :
+                            if line in modified_lines_angles : 
+                                modified_lines_angles.remove(line)
+        else: 
+            for line in modified_lines_angles.copy():
+                if len(line.split(" "))>3:
+                    if str(closest_bead+1) == line.split(" ")[2] or str(closest_bead+1) == line.split(" ")[3] or str(closest_bead+1) == line.split(" ")[4] :
+                        if line in modified_lines_angles : 
+                            modified_lines_angles.remove(line)
     modified_angles_write = "\n".join(modified_lines_angles)+ "\n"
 
-    #clean dihedrals from interactions with beads dirctly below VS
+    #for larger molecules clean dihedrals from interactions with beads dirctly below VS
     modified_lines_dihedrals=[]
     for lineD in list(dihedrals_write.split("\n")):
         modified_lines_dihedrals.append(lineD)
     
-    for closest_bead in closest_beads:
-        for line in modified_lines_dihedrals.copy():
-            if len(line.split(" "))>4:
-                if str(closest_bead+1) == line.split(" ")[2] or str(closest_bead+1) == line.split(" ")[3] or str(closest_bead+1) == line.split(" ")[4] or str(closest_bead+1) == line.split(" ")[5] :
-                    if line in modified_lines_dihedrals : 
-                        modified_lines_dihedrals.remove(line)
+    if len(bead_coords)>5 :
+        if len(virtual_sites)>1: #need to exclude more bonds if more than 1 VS,
+            for cb in closest_beads:
+                for line in modified_lines_dihedrals.copy():
+                    if len(line.split(" "))>4:
+                        if str(cb+1) == line.split(" ")[2] or str(cb+1) == line.split(" ")[3] or str(cb+1) == line.split(" ")[4] or str(cb+1) == line.split(" ")[5] :
+                            if line in modified_lines_dihedrals : 
+                                modified_lines_dihedrals.remove(line)
+        else:
+            for line in modified_lines_dihedrals.copy():
+                if len(line.split(" "))>4:
+                    if str(closest_bead+1) == line.split(" ")[2] or str(closest_bead+1) == line.split(" ")[3] or str(closest_bead+1) == line.split(" ")[4] or str(closest_bead+1) == line.split(" ")[5] :
+                        if line in modified_lines_dihedrals : 
+                            modified_lines_dihedrals.remove(line)
     modified_dihedrals_write = "\n".join(modified_lines_dihedrals)+ "\n"
 
     exclusions_net=""
@@ -1287,7 +1335,6 @@ def smi2alogps_externalfile(forcepred, smi, wc_log_p, bead, trial=True):
             break
     if not found_mol_1:
         # If we're forcing a prediction, use Wildman-Crippen
-        print("we're forcing a prediction:",forcepred,trial)
         if not forcepred:
             if trial:
                 wrn = (
