@@ -44,8 +44,8 @@ def read_bead_params():
     bead_params["rvdw"] = 4.7 / 2.0     # sigma for non-ring 
     bead_params["rvdw_aromatic"] = 4.1 / 2.0 #was 4.3 / 2.0    #sigma for ring
     bead_params["rvdw_cross"] = 0.5 * ((4.7 / 2.0) + (4.3 / 2.0))
-    bead_params["offset_bd_weight"] = 30.0 #was 50.0    #penalty weight for nonring beads
-    bead_params["offset_bd_aromatic_weight"] = 10.0 #was 20.0    #penalty weight for ring beads
+    bead_params["offset_bd_weight"] =20.0 #was 50.0    #penalty weight for nonring beads
+    bead_params["offset_bd_aromatic_weight"] = 5.0 #was 20.0    #penalty weight for ring beads
     bead_params["lonely_atom_penalize"] = 0.28  #was 0.20
     bead_params["bd_bd_overlap_coeff"] = 9.0
     bead_params["at_in_bd_coeff"] = 0.9     #atom-bead favored encapsulation - should change???

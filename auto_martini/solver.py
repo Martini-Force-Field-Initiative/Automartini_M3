@@ -91,7 +91,7 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi):
 class Cg_molecule:
     """Main class to coarse-grain molecule"""
 
-    def __init__(self, molecule, mol_smi, molname, dihedrals, topfname=None, forcepred=True):
+    def __init__(self, molecule, mol_smi, molname, dihedrals, topfname, forcepred=True):
         self.heavy_atom_coords = None
         self.atom_coords = None
         self.list_heavyatom_names = None

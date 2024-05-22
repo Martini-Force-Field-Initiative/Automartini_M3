@@ -553,8 +553,134 @@ def print_atoms(
 
     return atomnames, beadtypes, text
 
-
 def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringatoms, trial=False):
+    """print CG bonds in itp format"""
+    logger.debug("Entering print_bonds()")
+
+    # Bond information
+    bondlist = []
+    constlist = []
+    text = ""
+    cpt_ringatoms = 0
+    if ringatoms != []: cpt_ringatoms=len(ringatoms[0])
+
+    if len(cgbeads) > 1:
+        for i in range(len(cgbeads)):
+            for j in range(i + 1, len(cgbeads)):
+                dist = np.linalg.norm(cgbead_coords[i] - cgbead_coords[j]) * 0.1
+                if dist < 0.5: #was  0.65
+                    # Are atoms part of the same ring
+                    in_ring = False
+                    for ring in ringatoms:
+                        if cgbeads[i] in ring and cgbeads[j] in ring:# and len(ring)<5:
+                            constlist.append([i, j, dist])
+                            """in_ring = True
+                            break
+                    if in_ring:
+                        constlist.append([i, j, dist])"""
+                    
+
+                    else:
+                        # Check that the bond is not too short
+                        if dist < 0.15: raise NameError("Bond too short") #was 0.2
+                        # Look for a bond between an atom of i and an atom of j
+                        found_connection = False
+                        atoms_in_bead_i = []
+                        for ii in partitioning.keys():
+                            if partitioning[ii] == i:
+                                atoms_in_bead_i.append(ii)
+                        atoms_in_bead_j = []
+                        
+                        for jj in partitioning.keys():
+                            if partitioning[jj] == j:
+                                atoms_in_bead_j.append(jj)
+                        for ib in range(len(molecule.GetBonds())):
+                            abond = molecule.GetBondWithIdx(ib)
+                            if (
+                                abond.GetBeginAtomIdx() in atoms_in_bead_i
+                                and abond.GetEndAtomIdx() in atoms_in_bead_j
+                            ) or (
+                                abond.GetBeginAtomIdx() in atoms_in_bead_j
+                                and abond.GetEndAtomIdx() in atoms_in_bead_i
+                            ):
+                                found_connection = True
+                        if found_connection:
+                            bondlist.append([i, j, dist])
+                        else: 
+                            if cpt_ringatoms<7 and len(cgbeads)<5 and [i, j, dist] not in constlist:
+                                constlist.append([i, j, dist])
+        "(...)"
+        # Go through list of constraints. If we find an extra
+        # possible constraint between beads that have constraints,
+        # add it.
+        beads_with_const = []
+        for c in constlist:
+            if c[0] not in beads_with_const:
+                beads_with_const.append(c[0])
+            if c[1] not in beads_with_const:
+                beads_with_const.append(c[1])
+        beads_with_const = sorted(beads_with_const)
+        for i in range(len(beads_with_const)):
+            for j in range(1 + i, len(beads_with_const)):
+                const_exists = False
+                for c in constlist:
+                    if (c[0] == i and c[1] == j) or (c[0] == j and c[1] == i):
+                        const_exists = True
+                        break
+                if not const_exists:
+                    dist = np.linalg.norm(cgbead_coords[i] - cgbead_coords[j]) * 0.1
+                    if any(dist  != bl[2] for bl in bondlist): #< 0.35:
+                        # Check that it's not in the bond list
+                        in_bond_list = False
+                        for b in bondlist:
+                            if (b[0] == i and b[1] == j) or (b[0] == j and b[0] == i):
+                                in_bond_list = True
+                                break
+                        # Are atoms part of the same ring
+                        in_ring = False
+                        for ring in ringatoms:
+                            if cgbeads[i] in ring and cgbeads[j] in ring and len(ring)<5:
+                                in_ring = True
+                                break
+                        # If not in bondlist and in the same ring, add the contraint
+                        if not in_bond_list and in_ring and [i, j, dist] not in constlist:
+                            constlist.append([i, j, dist])
+
+        if not trial:
+            beadlist=[]
+            for bead in beadtypes:
+                if not bead.startswith('T') and not bead.startswith('S'): beadlist.append('R')
+                else: beadlist.append(bead[0])
+            
+            if len(bondlist) > 0:
+                text = "\n[bonds]\n" + ";  i   j     funct   length   force.c.\n"
+                for b in bondlist:
+                    # Make sure atoms in bond are not part of the same ring
+                    text = text + "   {:<3d} {:<3d}   1       {:4.2f}       {:4.2f}\n".format(
+                        b[0] + 1, b[1] + 1, b[2], read_params(b[2],beadlist[b[0]]+"-"+beadlist[b[1]])
+                    )
+            else: text = "\n[bonds]\n"
+
+            if len(constlist) > 0:
+                text = text + "\n[constraints]\n" + ";  i   j     funct   length\n"
+
+                for c in constlist:
+                    if c not in bondlist:
+                        text = text + "   {:<3d} {:<3d}   1       {:4.2f}\n".format(
+                            c[0] + 1, c[1] + 1, c[2]
+                        )
+            # Make sure there's at least a bond to every atom
+            for i in range(len(cgbeads)):
+                bond_to_i = False
+                for b in bondlist + constlist:
+                    if i in [b[0], b[1]]:
+                        bond_to_i = True
+                if not bond_to_i:
+                    print("Error. No bond to atom %d" % (i + 1))
+                    exit(1)
+    return bondlist, constlist, text
+
+def print_bonds_old(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringatoms, trial=False):
     """print CG bonds in itp format"""
     logger.debug("Entering print_bonds()")
 
@@ -1156,8 +1282,6 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
     modified_header_write="\n".join(modified_lines_header)+ "\n"
 
     #Adding force to constraints 
-    print(bonds_write)
-    print(dihedrals_write)
     modified_lines_bonds=[]
     for line in list(bonds_write.split("\n")):
         if "1"in line and len(line.split("   "))<7: 
