@@ -31,7 +31,7 @@ and LICENSE files.
 from sys import exit
 
 import numpy as np
-
+from collections import namedtuple
 from .common import *
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ def read_bead_params():
     bead_params["offset_bd_weight"] =20.0 #was 50.0    #penalty weight for nonring beads
     bead_params["offset_bd_aromatic_weight"] = 5.0 #was 20.0    #penalty weight for ring beads
     bead_params["lonely_atom_penalize"] = 0.28  #was 0.20
-    bead_params["bd_bd_overlap_coeff"] = 9.0
+    bead_params["bd_bd_overlap_coeff"] = 1.0 #was 9.0
     bead_params["at_in_bd_coeff"] = 0.9     #atom-bead favored encapsulation - should change???
     return bead_params
 
@@ -154,7 +154,7 @@ def eval_gaussian_interac(molecule, conformer, list_beads, ringatoms):
     return weight_sum
 
 
-def check_beads(list_heavyatoms, heavyatom_coords, trial_comb, ring_atoms, listbonds):
+def check_beads(molecule, list_heavyatoms, heavyatom_coords, trial_comb, ring_atoms, listbonds):
     """Check if CG bead positions in trailComb are acceptable"""
     logger.debug("Entering check_beads()")
     acceptable_trial = ""
@@ -224,6 +224,142 @@ def check_beads(list_heavyatoms, heavyatom_coords, trial_comb, ring_atoms, listb
                             )
     return acceptable_trial
 
+# Ertl Functional Groups Finder algorithm (merge, identify_functional_groups)
+
+def merge(mol, marked, aset):
+    #  Original authors: Richard Hall and Guillaume Godin
+    #  This file is part of the RDKit.
+    #  The contents are covered by the terms of the BSD license
+    #  which is included in the file license.txt, found at the root
+    #  of the RDKit source tree.
+    bset = set()
+    for idx in aset:
+        atom = mol.GetAtomWithIdx(idx)
+        for nbr in atom.GetNeighbors():
+            jdx = nbr.GetIdx()
+            if jdx in marked:
+                marked.remove(jdx)
+                bset.add(jdx)
+    if not bset:
+        return
+    merge(mol, marked, bset)
+    aset.update(bset)
+
+
+def identify_functional_groups(mol):
+    # atoms connected by non-aromatic double or triple bond to any heteroatom
+    PATT_DOUBLE_TRIPLE = Chem.MolFromSmarts('A=,#[!#6]')
+    # atoms in non-aromatic carbon-carbon double or triple bonds
+    PATT_CC_DOUBLE_TRIPLE = Chem.MolFromSmarts('C=,#C')
+    # acetal carbons, i.e. sp3 carbons connected to two or more oxygens, nitrogens or sulfurs; these O, N or S atoms must have only single bonds
+    PATT_ACETAL = Chem.MolFromSmarts('[CX4](-[O,N,S])-[O,N,S]')
+    # all atoms in oxirane, aziridine and thiirane rings
+    PATT_OXIRANE_ETC = Chem.MolFromSmarts('[O,N,S]1CC1')
+
+    PATT_TUPLE = (PATT_DOUBLE_TRIPLE, PATT_CC_DOUBLE_TRIPLE, PATT_ACETAL, PATT_OXIRANE_ETC)
+
+    marked = set()
+    # mark all heteroatoms in a molecule, including halogens
+    for atom in mol.GetAtoms():
+        if atom.GetAtomicNum() not in (6, 1):  # would we ever have hydrogen?
+            marked.add(atom.GetIdx())
+
+    # mark the four specific types of carbon atom
+    for patt in PATT_TUPLE:
+        for path in mol.GetSubstructMatches(patt):
+            for atomindex in path:
+                marked.add(atomindex)
+
+    # merge all connected marked atoms to a single FG
+    groups = []
+    while marked:
+        grp = set([marked.pop()])
+        merge(mol, marked, grp)
+        groups.append(grp)
+
+    # extract also connected unmarked carbon atoms
+    ifg = namedtuple('IFG', ['atomIds', 'atoms', 'type', 'type_atomIds'])
+    ifgs = []
+    for g in groups:
+        uca = set()
+        for atomidx in g:
+            for n in mol.GetAtomWithIdx(atomidx).GetNeighbors():
+                if n.GetAtomicNum() == 6:
+                    uca.add(n.GetIdx())
+        type_atoms = g.union(uca)
+        ifgs.append(
+            ifg(atomIds=tuple(sorted(g)),
+                atoms=Chem.MolFragmentToSmiles(mol, g, canonical=True),
+                type=Chem.MolFragmentToSmiles(mol, type_atoms, canonical=True),
+                type_atomIds=tuple(sorted(type_atoms)))
+        )
+    """for ix, fg in enumerate(ifgs):
+        print(f'Functional Group {ix + 1}:')
+        print(f'  Atom Indices: {fg.atomIds}')
+        print(f'  Atoms (SMILES): {fg.atoms}')
+        print(f'  Group Type (SMILES): {fg.type}')
+        print(f'  Group Type Atom Indices: {fg.type_atomIds}')"""
+    
+    """
+    USE:
+    m = Chem.MolFromSmiles(smiles)
+    fgs = identify_functional_groups(m)
+    print('%2d: %d fgs' % (ix + 1, len(fgs)), fgs)
+    """
+    return ifgs
+
+def identify_functional_groups_original(mol):
+    # atoms connected by non-aromatic double or triple bond to any heteroatom
+    # c=O should not match (see fig1, box 15).  I think using A instead of * should sort that out?
+    PATT_DOUBLE_TRIPLE = Chem.MolFromSmarts('A=,#[!#6]')
+    # atoms in non aromatic carbon-carbon double or triple bonds
+    PATT_CC_DOUBLE_TRIPLE = Chem.MolFromSmarts('C=,#C')
+    # acetal carbons, i.e. sp3 carbons connected to tow or more oxygens, nitrogens or sulfurs; these O, N or S atoms must have only single bonds
+    PATT_ACETAL = Chem.MolFromSmarts('[CX4](-[O,N,S])-[O,N,S]')
+    # all atoms in oxirane, aziridine and thiirane rings
+    PATT_OXIRANE_ETC = Chem.MolFromSmarts('[O,N,S]1CC1')
+
+    PATT_TUPLE = (PATT_DOUBLE_TRIPLE, PATT_CC_DOUBLE_TRIPLE, PATT_ACETAL, PATT_OXIRANE_ETC)
+
+    marked = set()
+    #mark all heteroatoms in a molecule, including halogens
+    for atom in mol.GetAtoms():
+        if atom.GetAtomicNum() not in (6, 1):  # would we ever have hydrogen?
+            marked.add(atom.GetIdx())
+
+    #mark the four specific types of carbon atom
+    for patt in PATT_TUPLE:
+        for path in mol.GetSubstructMatches(patt):
+            for atomindex in path:
+                marked.add(atomindex)
+
+    #merge all connected marked atoms to a single FG
+    groups = []
+    while marked:
+        grp = set([marked.pop()])
+        merge(mol, marked, grp)
+        groups.append(grp)
+
+
+    #extract also connected unmarked carbon atoms
+    ifg = namedtuple('IFG', ['atomIds', 'atoms', 'type'])
+    ifgs = []
+    for g in groups:
+        uca = set()
+        for atomidx in g:
+            for n in mol.GetAtomWithIdx(atomidx).GetNeighbors():
+                if n.GetAtomicNum() == 6:
+                    uca.add(n.GetIdx())
+        ifgs.append(
+        ifg(atomIds=tuple(list(g)), atoms=Chem.MolFragmentToSmiles(mol, g, canonical=True),
+            type=Chem.MolFragmentToSmiles(mol, g.union(uca), canonical=True)))
+    """
+    USE:
+    m = Chem.MolFromSmiles(smiles)
+    fgs = identify_functional_groups(m)
+    print('%2d: %d fgs' % (ix + 1, len(fgs)), fgs)
+    """
+    return ifgs
 
 def find_bead_pos(
     molecule, conformer, list_heavy_atoms, heavyatom_coords, ring_atoms, ringatoms_flat
@@ -284,7 +420,7 @@ def find_bead_pos(
         for seq in seq_one_beads:
             trial_comb = list(seq)
             acceptable_trial = check_beads(
-                list_heavy_atoms, heavyatom_coords, trial_comb, ring_atoms, list_bonds
+                molecule, list_heavy_atoms, heavyatom_coords, trial_comb, ring_atoms, list_bonds
             )
             #print("**** acceptable_trial : ", acceptable_trial)
             if acceptable_trial:
@@ -297,7 +433,7 @@ def find_bead_pos(
                 logger.info("; %s %s", trial_comb, trial_ene)
                 # Make sure all atoms within one bead would be connected
                 if all_atoms_in_beads_connected(
-                    trial_comb, heavyatom_coords, list_heavy_atoms, list_bonds,ring_atoms
+                    trial_comb, heavyatom_coords, list_heavy_atoms, list_bonds
                 ):
                     # Accept the move
                     if trial_ene < ene_best_trial:
@@ -324,7 +460,7 @@ def find_bead_pos(
     return sorted_combs[:, 0], sorted_combs[:, 1]
 
 
-def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, bondlist, ring_atoms):
+def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, bondlist):
     """Make sure all atoms within one CG bead are connected to at least
     one other atom in that bead"""
     logger.debug("Entering all_atoms_in_beads_connected()")
@@ -333,7 +469,7 @@ def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, 
 
     for i in range(len(trial_comb)):
         cgbead_coords.append(heavyatom_coords[list_heavyatoms.index(trial_comb[i])])
-    voronoi, bead_cog  = voronoi_atoms(cgbead_coords, heavyatom_coords, ring_atoms)
+    voronoi, bead_cog  = voronoi_atoms(cgbead_coords, heavyatom_coords)
     logger.debug("voronoi %s" % voronoi)
 
     for i in range(len(trial_comb)):
@@ -357,7 +493,7 @@ def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, 
     return True
 
 
-def voronoi_atoms(cgbead_coords, heavyatom_coords, ring_atoms):
+def voronoi_atoms(cgbead_coords, heavyatom_coords):
     """Partition all atoms between CG beads"""
     logger.debug("Entering voronoi_atoms()")
     partitioning = {}
@@ -428,6 +564,52 @@ def voronoi_atoms(cgbead_coords, heavyatom_coords, ring_atoms):
         bead_coord = np.stack(coords, axis=0)
         cog = np.mean(bead_coord, axis=0)
         bead_cog.append(cog)
-
+    
     return partitioning, bead_cog
 
+def functional_groups_ok(atom_partitioning,molecule,ringatoms):
+    # checking if functional groups are in distinctive bead
+
+    fgs = identify_functional_groups(molecule)
+    fgs_id=[j[0] for j in [i[0] for i in fgs]]
+    #print("ids of FGS ",fgs_id, " and atoms inside : ",[fg.type_atomIds for ix, fg in enumerate(fgs)] )
+
+    bead_atoms={}
+    for at, bead in atom_partitioning.items():
+        if bead not in bead_atoms:
+            bead_atoms[bead] = []
+        bead_atoms[bead].append(at) 
+    
+    group_found = []
+    for ix, fg in enumerate(fgs):
+        gr_f = False
+        for bead, atoms in bead_atoms.items():
+            if set(fg.type_atomIds).issubset(atoms) or len(fg.type_atomIds)>3:
+                gr_f = True
+                break
+        group_found.append(gr_f)
+        #print("group", fg.type_atomIds, "found:", gr_f)
+
+    # Check if at least 50% of elements in group_found are True
+    if group_found.count(True) >= len(group_found) / 2:
+        return True
+    else:
+        return False
+
+
+def max2arperbead(atom_partitioning, ringatoms):
+    # Create bead_atoms dictionary
+    bead_atoms = {}
+    for at, bead in atom_partitioning.items():
+        if bead not in bead_atoms:
+            bead_atoms[bead] = []
+        bead_atoms[bead].append(at)
+    
+    # Convert ringatoms to a set
+    ringatoms_set = set(atom for sublist in ringatoms for atom in sublist)
+    for bead,atoms in bead_atoms.items():
+        ring_atom_count = sum(1 for atom in atoms if atom in ringatoms_set)
+        if ring_atom_count > 2:
+            return False
+        else:   
+            return True

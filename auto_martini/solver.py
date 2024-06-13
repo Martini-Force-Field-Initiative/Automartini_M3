@@ -70,8 +70,7 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi):
     # Get SMILES string of entire molecule
 
     #s = Chem.MolToSmiles(molecule)
-
-    whole_mol_dg = topology.smi2alogps(forcepred, mol_smi, wc_log_p, "MOL", True)
+    whole_mol_dg = topology.smi2alogps(forcepred, mol_smi, wc_log_p, "MOL",True)
     if whole_mol_dg != 0:
         m_ad = math.fabs((whole_mol_dg - sum_frag) / whole_mol_dg)
         logger.info(
@@ -91,7 +90,7 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi):
 class Cg_molecule:
     """Main class to coarse-grain molecule"""
 
-    def __init__(self, molecule, mol_smi, molname, dihedrals, topfname, forcepred=True):
+    def __init__(self, molecule, mol_smi, molname, dihedrals, topfname,bartenderfname, bartender, logp_file, forcepred=True):
         self.heavy_atom_coords = None
         self.atom_coords = None
         self.list_heavyatom_names = None
@@ -99,9 +98,15 @@ class Cg_molecule:
         self.cg_bead_names = []
         self.cg_bead_coords = []
         self.topout = None
+        self.bartender_out = None
         self.molname=molname #for pretty GRO file (will be easier to look on a molecule in VMD with its proper name)
 
         logger.info("Entering cg_molecule()")
+
+        #MINIMIZATION with RDkit
+        molecule = Chem.Mol(molecule)
+        AllChem.EmbedMolecule(molecule)
+        AllChem.MMFFOptimizeMolecule(molecule)
 
         feats = topology.extract_features(molecule)
 
@@ -154,15 +159,29 @@ class Cg_molecule:
 
             # Partition atoms into coarse-grained beads
             self.atom_partitioning,_ = optimization.voronoi_atoms(
-                cg_bead_coords, self.heavy_atom_coords, ring_atoms
+                cg_bead_coords, self.heavy_atom_coords
             )
             _, self.cg_bead_coords = optimization.voronoi_atoms(
-                cg_bead_coords, self.atom_coords, ring_atoms
+                cg_bead_coords, self.atom_coords
             )
+            max_fails=1
+            fails=0
+
+            if not optimization.max2arperbead(self.atom_partitioning, ring_atoms):
+                fails += 1
+
+            if not optimization.functional_groups_ok(self.atom_partitioning,molecule, ring_atoms):
+                fails += 1
+            
+            if fails > max_fails:
+                success=False
+            else:
+                success=True
+
 
             logger.info("; Atom partitioning: {atom_partitioning}")
 
-            self.cg_bead_names, bead_types, _ = topology.print_atoms(
+            self.cg_bead_names, bead_types, _, _ = topology.print_atoms(
                 molname,
                 forcepred,
                 cg_beads,
@@ -172,6 +191,7 @@ class Cg_molecule:
                 self.atom_partitioning,
                 ring_atoms,
                 ring_atoms_flat,
+                logp_file,
                 True,
             )
             bd= bead_types
@@ -205,10 +225,9 @@ class Cg_molecule:
             if len(cg_beads) != len(self.cg_bead_names):
                 success = False
                 errval = 8
-
             if success:
                 header_write = topology.print_header(molname, mol_smi)
-                self.cg_bead_names, bead_types, atoms_write = topology.print_atoms(
+                self.cg_bead_names, bead_types, atoms_write, atoms_in_smi = topology.print_atoms(
                     molname,
                     forcepred,
                     cg_beads,
@@ -218,6 +237,7 @@ class Cg_molecule:
                     self.atom_partitioning,
                     ring_atoms,
                     ring_atoms_flat,
+                    logp_file,
                     trial=False,
                 )
 
@@ -231,7 +251,7 @@ class Cg_molecule:
                     False,
                 )
 
-                dihedrals_write, dih_list = topology.print_dihedrals(
+                dihedrals_write = topology.print_dihedrals(
                     cg_beads, const_list, ring_atoms, self.cg_bead_coords,bd
                 )
                 angles_write, angle_list = topology.print_angles(
@@ -257,25 +277,31 @@ class Cg_molecule:
                         errval = 7
 
 
-                self.topout = (header_write + atoms_write + bonds_write + angles_write)
+                self.topout, bartender_input_info = topology.topout(header_write,atoms_write,bonds_write,angles_write)
                 if len(ring_atoms)>0:
-                    if len(ring_atoms[0])>6:
-                        vs_write, virtual_sites, vs_bead_coords  = topology.print_virtualsites(cg_beads,ring_atoms,cg_bead_coords)
+                    if len(ring_atoms[0])>7:
+                        vs_write, virtual_sites, vs_bead_coords  = topology.print_virtualsites(ring_atoms,cg_bead_coords,self.atom_partitioning)
                     
-                        if len(ring_atoms[0])<13:
+                        """if len(ring_atoms[0])<13:
                             self.cg_bead_coords.append(vs_bead_coords)
                         else: 
-                            self.cg_bead_coords.extend(vs_bead_coords)
+                            self.cg_bead_coords.extend(vs_bead_coords)"""
                             
-                        self.topout, vs_bead_names  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,self.cg_bead_coords)
+                        self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,self.cg_bead_coords)
 
-                        if len(ring_atoms[0])<13 or len(virtual_sites)<2:
+                        """if len(ring_atoms[0])<13 or len(virtual_sites)<2:
                             self.cg_bead_names.append(vs_bead_names)
                         else: 
-                            self.cg_bead_names.extend(vs_bead_names)
+                            self.cg_bead_names.extend(vs_bead_names)"""
 
                     if dihedrals==True and len(ring_atoms[0])<7 : 
-                        self.topout = topology.topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, self.cg_bead_coords, ring_atoms, cg_beads)
+                        self.topout, bartender_input_info = topology.topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, self.cg_bead_coords, ring_atoms, cg_beads)
+
+                if bartender==True:
+                    bartender_out = topology.bartender_input(molname, atoms_in_smi, bartender_input_info)
+                    with open(bartenderfname, "w") as btf:
+                        btf.write(bartender_out)
+
                 if topfname:
                     with open(topfname, "w") as fp:
                         fp.write(self.topout)

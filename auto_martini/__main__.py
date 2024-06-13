@@ -76,13 +76,13 @@ group.add_argument(
     required=False,
     help="SMILES string of atomistic structure",
 )
+
+parser.add_argument("--logp",dest="logp",type=str, required=True,help="File with partial smiles and associated logP")
 parser.add_argument("--mol", dest="molname", type=str, required=False, help="Name of CG molecule")
 parser.add_argument("--aa", dest="aa", type=str, help="filename of all-atom structure .gro file")
-#parser.add_argument("--cg", dest="cg", type=str, help="filename of coarse-grained structure .gro file")
-#parser.add_argument("--top", dest="topfname", type=str, help="filename of output topology file")
 parser.add_argument("-v","--verbose",dest="verbose",action="count",default=0,help="increase verbosity",)
 parser.add_argument("--fpred",dest="forcepred",action="store_true",help="Atomic partitioning prediction",)
-
+parser.add_argument("--bartender",dest="bartender_output",type=str,default=True,required=False,help="False, if you don't require bartender input file")
 parser.add_argument("--dih",dest="dihedrals",type=str,default=True,required=False,
                     help="If you don't want dihedrals in topology file, give False",)
 
@@ -119,8 +119,9 @@ else:
 
 topname=args.molname+".itp"
 groname=args.molname+".gro"
+bartenderfname=args.molname+"_bartenderINPUT.dat"
 #cg = solver.Cg_molecule(mol, args.smi, args.molname, args.dihedrals, args.topfname, args.forcepred)
-cg = solver.Cg_molecule(mol, args.smi, args.molname, args.dihedrals, topname, args.forcepred)
+cg = solver.Cg_molecule(mol, args.smi, args.molname, args.dihedrals, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
 
 if args.aa:
     cg.output_aa(args.aa)
