@@ -90,7 +90,7 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi):
 class Cg_molecule:
     """Main class to coarse-grain molecule"""
 
-    def __init__(self, molecule, mol_smi, molname, dihedrals, topfname,bartenderfname, bartender, logp_file, forcepred=True):
+    def __init__(self, molecule, mol_smi, molname, simple_model, topfname,bartenderfname, bartender, logp_file, forcepred=True):
         self.heavy_atom_coords = None
         self.atom_coords = None
         self.list_heavyatom_names = None
@@ -251,9 +251,14 @@ class Cg_molecule:
                     False,
                 )
 
-                dihedrals_write = topology.print_dihedrals(
-                    cg_beads, const_list, ring_atoms, self.cg_bead_coords,bd
-                )
+                if not simple_model:
+                    dihedrals_write = topology.print_dihedrals(
+                    cg_beads,
+                    const_list,
+                    ring_atoms,
+                    self.cg_bead_coords,bd
+                    )
+
                 angles_write, angle_list = topology.print_angles(
                     cg_beads,
                     molecule,
@@ -278,34 +283,35 @@ class Cg_molecule:
 
 
                 self.topout, bartender_input_info = topology.topout(header_write,atoms_write,bonds_write,angles_write)
-                if len(ring_atoms)>0:
+                if len(ring_atoms)>0 and not simple_model:
                     if len(ring_atoms[0])>7:
                         vs_write, virtual_sites, vs_bead_coords  = topology.print_virtualsites(ring_atoms,cg_bead_coords,self.atom_partitioning)
-                    
-                        """if len(ring_atoms[0])<13:
+                        
+                        """#for dummy VS code
+                        if len(ring_atoms[0])<13:
                             self.cg_bead_coords.append(vs_bead_coords)
-                        else: 
+                        else:
                             self.cg_bead_coords.extend(vs_bead_coords)"""
-                            
-                        self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,self.cg_bead_coords)
-
-                        """if len(ring_atoms[0])<13 or len(virtual_sites)<2:
+                        
+                        self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,simple_model)
+                        
+                        """#for dummy VS code
+                        if len(ring_atoms[0])<13 or len(virtual_sites)<2:
                             self.cg_bead_names.append(vs_bead_names)
-                        else: 
+                        else:
                             self.cg_bead_names.extend(vs_bead_names)"""
-
-                    if dihedrals==True and len(ring_atoms[0])<7 : 
+                    
+                    else:
                         self.topout, bartender_input_info = topology.topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, self.cg_bead_coords, ring_atoms, cg_beads)
-
-                if bartender==True:
+                
+                if bartender:
                     bartender_out = topology.bartender_input(molname, atoms_in_smi, bartender_input_info)
                     with open(bartenderfname, "w") as btf:
                         btf.write(bartender_out)
-
+                
                 if topfname:
                     with open(topfname, "w") as fp:
                         fp.write(self.topout)
-
                 print("Converged to solution in {} iteration(s)".format(attempt + 1))
                 break
             else:

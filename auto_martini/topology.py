@@ -122,7 +122,6 @@ def gen_molecule_smi(smi):
         exit(1)
     return molecule, errval
 
-
 def gen_molecule_sdf(sdf):
     """Generate mol object from SD file"""
     logger.debug("Entering gen_molecule_sdf()")
@@ -137,7 +136,7 @@ def gen_molecule_sdf(sdf):
             exit(1)
     return molecule
 
-def image_to_ascii(image_path, output_width=40):
+def image_to_ascii(image_path, output_width=30):
     # Load the image
     image = Image.open(image_path)
     # Convert image to grayscale
@@ -160,7 +159,7 @@ def image_to_ascii(image_path, output_width=40):
             ascii_str += line + "\n;"
     return ascii_str
 
-def smiles_to_ascii(mol,molname, output_width=40):
+def smiles_to_ascii(mol,molname, output_width=30):
     # Draw the molecule and save as image
     img = Draw.MolToImage(mol)
     img_path = str(molname)+'.png'
@@ -198,12 +197,10 @@ def letter_occurrences(string):
             frequencies[character.upper()] += 1
     return frequencies
 
-
 def get_charge(molecule):
     """Get net charge of molecule"""
     logger.debug("Entering get_charge()")
     return Chem.rdmolops.GetFormalCharge(molecule)
-
 
 def get_hbond_a(features):
     """Get Hbond acceptor information"""
@@ -216,7 +213,6 @@ def get_hbond_a(features):
                     hbond.append(i)
     return hbond
 
-
 def get_hbond_d(features):
     """Get Hbond donor information"""
     logger.debug("Entering get_hbond_d()")
@@ -227,7 +223,6 @@ def get_hbond_d(features):
                 if i not in hbond:
                     hbond.append(i)
     return hbond
-
 
 def get_atoms(molecule):
     """List all heavy atoms"""
@@ -248,7 +243,6 @@ def get_atoms(molecule):
         print("Error. No heavy atom found.")
         exit(1)
     return list_heavyatoms, list_heavyatomnames
-
 
 def get_ring_atoms_old(molecule):
     """Get ring atoms"""
@@ -281,8 +275,6 @@ def get_ring_atoms(mol):
 
     return [list(ring) for ring in ring_systems]
 
-
-
 def get_heavy_atom_coords(molecule):
     """Extract atomic coordinates of heavy atoms in molecule mol"""
     logger.debug("Entering get_heavy_atom_coords()")
@@ -307,7 +299,6 @@ def get_atom_coords(molecule):
         heavyatom_coords.append(np.array([conformer.GetAtomPosition(i)[j] for j in range(3)]))
 
     return conformer, heavyatom_coords
-
 
 def extract_features(molecule):
     """Extract features of molecule"""
@@ -418,7 +409,6 @@ def read_params(val, size): #returns force of the closest to given parameter
                     return force
         else: return None
 
-
 def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
     """Substructure to smiles conversion; also output Wildman-Crippen log_p;
     and charge of group."""
@@ -501,26 +491,13 @@ def get_standard_mass(bead_type):
         if bead_type.startswith('S'): return 54
         else: return 72
 
-
-def print_atoms(
-    molname,
-    forcepred,
-    cgbeads,
-    molecule,
-    hbonda,
-    hbondd,
-    partitioning,
-    ringatoms,
-    ringatoms_flat,
-    logp_file,
-    trial=False,
-):
+def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ringatoms,ringatoms_flat,logp_file,trial=False):
     """Print CG Atoms in itp format"""
 
     logger.debug("Entering print_atoms()")
     atomnames = []
     beadtypes = []
-    text = "\n"
+    text = ""
     atoms_in_smi_dict={}
 
     for bead in range(len(cgbeads)):
@@ -588,7 +565,7 @@ def print_atoms(
             if not trial:
                 text = (
                     text
-                    + "   {:<5d}   {:5s}   1   {:5s}   {:7s}   {:<5d}   {:2d}   {:3d}   ;   {:5s}   {:5s}\n".format(
+                    + "\n   {:<5d}   {:5s}   1   {:5s}   {:7s}   {:<5d}   {:2d}   {:3d}   ;   {:8s}{:5s}".format(
                         bead + 1,
                         bead_type,
                         molname,
@@ -601,8 +578,6 @@ def print_atoms(
                     )
                 )
             beadtypes.append(bead_type)
-
-    text = text + "\n"
 
     return atomnames, beadtypes, text, atoms_in_smi_dict
 
@@ -714,20 +689,20 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                 else: beadlist.append(bead[0])
             
             if len(bondlist) > 0:
-                text = "\n[bonds]\n" + ";  i   j     funct   length   force.c.\n"
+                text = "\n[bonds]\n" + ";  i   j     funct   length   force.c."
                 for b in bondlist:
                     # Make sure atoms in bond are not part of the same ring
-                    text = text + "   {:<3d} {:<3d}   1       {:4.2f}       {:4.2f}\n".format(
+                    text = text + "\n   {:<3d} {:<3d}   1       {:4.2f}       {:4.2f}".format(
                         b[0] + 1, b[1] + 1, b[2], read_params(b[2],beadlist[b[0]]+"-"+beadlist[b[1]])
                     )
             else: text = "\n[bonds]\n"
 
             if len(constlist) > 0:
-                text = text + "\n[constraints]\n" + ";  i   j     funct   length\n"
+                text = text + "\n[constraints]\n" + ";  i   j     funct   length"
 
                 for c in constlist:
                     if c not in bondlist:
-                        text = text + "   {:<3d} {:<3d}   1       {:4.2f}\n".format(
+                        text = text + "\n   {:<3d} {:<3d}   1       {:4.2f}".format(
                             c[0] + 1, c[1] + 1, c[2]
                         )
             # Make sure there's at least a bond to every atom
@@ -837,7 +812,7 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
                 text = text + "  {:d} {:d} {:d}         1       {:<5.1f}  {:5.1f}\n".format(
                     a[0] + 1, a[1] + 1, a[2] + 1, a[3], force
                 )
-            text = text + "\n"
+            text = text
     return text, angle_list
 
 def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
@@ -845,7 +820,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
     logger.debug("Entering print_dihedrals()")
 
     new_dihed_list = []
-    text = "\n"
+    text = ""
 
     if len(cgbeads) > 3: 
         # Dihedrals
@@ -1028,13 +1003,13 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning):
 
 
     text = text + "\n[virtual_sitesn]\n"
-    text = text + "; site funct  constructing atom indices\n"
+    text = text + "; site funct  constructing atom indices"
     for vs, cb in virtual_sites.items():
-        if len(cb)==4:text = (text + "   {:d}       1     {:d} {:d} {:d} {:d}       \n".format(
+        if len(cb)==4:text = (text + "\n   {:d}       1     {:d} {:d} {:d} {:d}".format(
                                     vs+1, cb[0] + 1, cb[1] + 1, cb[2] + 1, cb[3] + 1
                                 )
                             )
-        if len(cb)==3:text = (text + "   {:d}       1     {:d} {:d} {:d}       \n".format(
+        if len(cb)==3:text = (text + "\n   {:d}       1     {:d} {:d} {:d}".format(
                                     vs+1, cb[0] + 1, cb[1] + 1, cb[2] + 1
                                 )
                             )
@@ -1154,7 +1129,7 @@ def print_virtualsites_dummy(cg_beads,ring_atoms,cg_bead_coords):
     return text, virtual_sites, vs_bead_coords
 
 def topout(header_write,atoms_write,bonds_write,angles_write):
-    text=header_write + atoms_write + bonds_write + angles_write
+    text=header_write +"\n"+ atoms_write + "\n" + bonds_write + "\n" + angles_write
 
     #bartender info search
     bartender_input_info={}
@@ -1166,7 +1141,7 @@ def topout(header_write,atoms_write,bonds_write,angles_write):
     
     bartender_input_info["ANGLES"]=[]
     for line in list(angles_write.split("\n")):
-        if "2" in line:
+        if "1" in line:
             x=line.split(" ")
             bartender_input_info["ANGLES"].append(x[2:5])
     return text, bartender_input_info
@@ -1191,7 +1166,7 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
                 lineH=line.split("         ")
                 txt=lineH[0]+"          1"
                 modified_lines_header.append(txt)
-        modified_header_write="\n".join(modified_lines_header)+ "\n"
+        modified_header_write="\n".join(modified_lines_header)
 
         #Adding force to constraints 
         modified_lines_bonds=[]
@@ -1247,7 +1222,7 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
             if len(dihed_line)>2 and not lineD.startswith(";") and len(angle_line)>2 and not lineA.startswith(";"):
                 if angle_line[2] in dihed_line[2:6] and angle_line[3] in dihed_line[2:6] and angle_line[4] in dihed_line[2:6]:
                     modified_lines_angles.remove(lineA)
-    modified_angles_write = "\n".join(modified_lines_angles)+ "\n"
+    modified_angles_write = "\n".join(modified_lines_angles)
 
     #bartender info search
     bartender_input_info={}
@@ -1263,10 +1238,10 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
             x=line.split(" ")
             bartender_input_info["ANGLES"].append(x[2:5])
 
-    text = modified_header_write + atoms_write +"\n"+ modified_bonds_write +"\n"+ modified_angles_write +"\n"+ dihedrals_write+exclusions_net
+    text = modified_header_write +"\n"+ atoms_write +"\n"+ modified_bonds_write +"\n"+ modified_angles_write +"\n"+ dihedrals_write+exclusions_net
     return text, bartender_input_info
 
-def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, bead_coords):
+def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, simple_model):
     text = ""
     bartender_input_info={}
     nb_beads=0
@@ -1297,7 +1272,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                 if str(vs_env+1) == line2.split("   ")[1]:
                     new_mass = int(int(line2.split("   ")[11]) + (vs_mass / len(cb)))
                     modified_lines_atoms[j]=line2.replace(line2.split("   ")[11], " " + str(new_mass))
-    modified_atoms_write = "\n".join(modified_lines_atoms)+ "\n"
+    modified_atoms_write = "\n".join(modified_lines_atoms)
 
     modified_lines_header=[]
     for line in list(header_write.split("\n")):
@@ -1306,7 +1281,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             lineH=line.split("         ")
             txt=lineH[0]+"         1"
             modified_lines_header.append(txt)
-    modified_header_write="\n".join(modified_lines_header)+ "\n"
+    modified_header_write="\n".join(modified_lines_header)
 
     #Adding force to constraints 
     modified_lines_bonds=[]
@@ -1319,7 +1294,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             modified_lines_bonds.remove(line)
             txt = "#ifndef FLEXIBLE\n[constraints]\n#endif"
             modified_lines_bonds.append(txt)
-    modified_bonds_write = "\n".join(modified_lines_bonds)+ "\n"
+    modified_bonds_write = "\n".join(modified_lines_bonds)
     
     #Bonds / Constraints: delete lines describing interactions with VS
     for line in list(modified_bonds_write.split("\n")):
@@ -1329,7 +1304,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                 for vs, cb in virtual_sites.items():
                     if str(vs+1) == bond_line[1] or str(vs+1) == bond_line[2]:
                         modified_lines_bonds.remove(line)
-    modified_bonds_write = "\n".join(modified_lines_bonds)+ "\n"
+    modified_bonds_write = "\n".join(modified_lines_bonds)
 
     #Angles: delete lines describing interactions with VS 
     modified_lines_angles = []
@@ -1351,19 +1326,22 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             if len(dihed_line)>2 and not lineD.startswith(";") and len(angle_line)>2 and not lineA.startswith(";"):
                 if angle_line[2] in dihed_line[2:6] and angle_line[3] in dihed_line[2:6] and angle_line[4] in dihed_line[2:6]:
                     if lineA  in modified_lines_angles:modified_lines_angles.remove(lineA)
-    modified_angles_write = "\n".join(modified_lines_angles)+ "\n"
+    modified_angles_write = "\n".join(modified_lines_angles)
 
-    #Dihedrals: delete lines describing interactions with VS 
-    modified_lines_dihedrals = []
-    for line in list(dihedrals_write.split("\n")):
-        if line !="":
-            dihed_line = line.split(" ")
-            if line not in modified_lines_dihedrals: modified_lines_dihedrals.append(line)
-            if len(dihed_line)>2 and not line.startswith(";"):
-                for vs, cb in virtual_sites.items():   
-                    if str(vs+1) in dihed_line[:6] :
-                        if line in modified_lines_dihedrals:modified_lines_dihedrals.remove(line)
-    modified_dihedrals_write = "\n".join(modified_lines_dihedrals)+ "\n"
+    if not simple_model:
+        #Dihedrals: delete lines describing interactions with VS
+        modified_lines_dihedrals = []
+        for line in list(dihedrals_write.split("\n")):
+            if line !="":
+                dihed_line = line.split(" ")
+                if line not in modified_lines_dihedrals: modified_lines_dihedrals.append(line)
+                if len(dihed_line)>2 and not line.startswith(";"):
+                    for vs, cb in virtual_sites.items():
+                        if str(vs+1) in dihed_line[:6] :
+                            if line in modified_lines_dihedrals:modified_lines_dihedrals.remove(line)
+        modified_dihedrals_write = "\n".join(modified_lines_dihedrals)
+    else:
+        modified_dihedrals_write = dihedrals_write
 
     exclusions_net=""
     exclusions_net = exclusions_net + "\n[exclusions]\n"
@@ -1371,9 +1349,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
         row = " ".join(map(str, range(i, nb_beads + 1)))
         exclusions_net="   "+exclusions_net+row+"\n"
     
-    exclusions_net=exclusions_net+"\n"
-
-        #bartender info search
+    #bartender info search
     bartender_input_info["BONDS"]=[]
     for line in list(modified_bonds_write.split("\n")):
         if "1" in line:
@@ -1387,12 +1363,11 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             bartender_input_info["ANGLES"].append(x[2:5])
     
     bartender_input_info["DIHEDRALS"]=[]
-    for line in list(modified_dihedrals_write.split("\n")):
+    for line in list(dihedrals_write.split("\n")): # not modified_dihedrals_write because VS are not visible in bartender input
         if "2" in line:
             x=line.split(" ")
             bartender_input_info["DIHEDRALS"].append(x[2:6])
-        
-    text = modified_header_write + modified_atoms_write+ modified_bonds_write+ modified_angles_write+ modified_dihedrals_write + vs_write + exclusions_net
+    text = modified_header_write +"\n"+ modified_atoms_write+"\n"+ modified_bonds_write+"\n"+ modified_angles_write+ "\n"+ modified_dihedrals_write + "\n"+ vs_write + exclusions_net
     return text, vs_bead_names, bartender_input_info
 
 def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, bead_coords):
@@ -1652,7 +1627,6 @@ def convert_log_k(log_k):
     val = 0.008314 * 300.0 * log_k / math.log10(math.exp(1))
     logger.debug("free energy %7.4f kJ/mol" % val)
     return val
-
 
 def mad(bead_type, delta_f, in_ring=False):
     """Mean absolute difference between bead type and delta_f"""
