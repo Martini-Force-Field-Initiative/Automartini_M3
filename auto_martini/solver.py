@@ -70,7 +70,7 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi):
     # Get SMILES string of entire molecule
 
     #s = Chem.MolToSmiles(molecule)
-    whole_mol_dg = topology.smi2alogps(forcepred, mol_smi, wc_log_p, "MOL",True)
+    whole_mol_dg = topology.smi2alogps(forcepred, mol_smi, wc_log_p, "MOL",None,None,True) #None,None=converted_smi, real_smi not needed here
     if whole_mol_dg != 0:
         m_ad = math.fabs((whole_mol_dg - sum_frag) / whole_mol_dg)
         logger.info(
@@ -100,13 +100,15 @@ class Cg_molecule:
         self.topout = None
         self.bartender_out = None
         self.molname=molname #for pretty GRO file (will be easier to look on a molecule in VMD with its proper name)
+        force_map = False
 
         logger.info("Entering cg_molecule()")
 
         #MINIMIZATION with RDkit
         molecule = Chem.Mol(molecule)
         AllChem.EmbedMolecule(molecule)
-        AllChem.MMFFOptimizeMolecule(molecule)
+        AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
+        AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) #was 1.1
 
         feats = topology.extract_features(molecule)
 
@@ -118,6 +120,7 @@ class Cg_molecule:
 
         # Identify ring-type atoms
         ring_atoms = topology.get_ring_atoms(molecule)
+        is_arom, num_arom = topology.is_aromatic(molecule)
 
         # Get Hbond information
         hbond_a = topology.get_hbond_a(feats)
@@ -134,7 +137,7 @@ class Cg_molecule:
             list_heavy_atoms,
             self.heavy_atom_coords,
             ring_atoms,
-            ring_atoms_flat,
+            ring_atoms_flat, force_map
         )
 
         # Loop through best 1% cg_beads and avg_pos
@@ -156,27 +159,45 @@ class Cg_molecule:
 
             # Extract position of coarse-grained beads
             cg_bead_coords = get_coords(conf, cg_beads, bead_pos, ring_atoms_flat)
+            print("\n\nconsidering configuration : ",cg_beads)
 
             # Partition atoms into coarse-grained beads
-            self.atom_partitioning,_ = optimization.voronoi_atoms(
-                cg_bead_coords, self.heavy_atom_coords
-            )
-            _, self.cg_bead_coords = optimization.voronoi_atoms(
-                cg_bead_coords, self.atom_coords
-            )
+            _, num_arom = topology.is_aromatic(molecule)
+
+            if not force_map and num_arom<7:
+                self.atom_partitioning,_ = optimization.voronoi_atoms_new(
+                    cg_bead_coords, self.heavy_atom_coords
+                )
+                _, self.cg_bead_coords = optimization.voronoi_atoms_new(
+                    cg_bead_coords, self.atom_coords
+                )
+            else:
+                self.atom_partitioning,_ = optimization.voronoi_atoms_old(
+                    cg_bead_coords, self.heavy_atom_coords
+                )
+                _, self.cg_bead_coords = optimization.voronoi_atoms_old(
+                    cg_bead_coords, self.atom_coords
+                )
+            print(f"FOUND PARTITIONNING : \n {self.atom_partitioning} \n")
             max_fails=1
             fails=0
 
-            if not optimization.max2arperbead(self.atom_partitioning, ring_atoms):
-                fails += 1
+            if is_arom and (num_arom % 2) == 0: #only for pair number of aromatic atoms (actual code prevents sharing/mismatch)
+                if not optimization.max2arperbead(self.atom_partitioning, ring_atoms):
+                    fails += 1
+                    print("THERE ARE MORE THAN 2 AROMATIC ATOMS PER BEAD")
 
             if not optimization.functional_groups_ok(self.atom_partitioning,molecule, ring_atoms):
                 fails += 1
             
-            if fails > max_fails:
-                success=False
+            if force_map:
+                if fails > max_fails:
+                    success=False
+                else:
+                    success=True
             else:
-                success=True
+                if fails>0: 
+                    success=False
 
 
             logger.info("; Atom partitioning: {atom_partitioning}")
@@ -256,7 +277,10 @@ class Cg_molecule:
                     cg_beads,
                     const_list,
                     ring_atoms,
-                    self.cg_bead_coords,bd
+                    self.cg_bead_coords,
+                    bd,
+                    molecule,
+                    self.atom_partitioning
                     )
 
                 angles_write, angle_list = topology.print_angles(
@@ -285,7 +309,7 @@ class Cg_molecule:
                 self.topout, bartender_input_info = topology.topout(header_write,atoms_write,bonds_write,angles_write)
                 if len(ring_atoms)>0 and not simple_model:
                     if len(ring_atoms[0])>7:
-                        vs_write, virtual_sites, vs_bead_coords  = topology.print_virtualsites(ring_atoms,cg_bead_coords,self.atom_partitioning)
+                        vs_write, virtual_sites, vs_bead_coords  = topology.print_virtualsites(ring_atoms,cg_bead_coords,self.atom_partitioning,molecule)
                         
                         """#for dummy VS code
                         if len(ring_atoms[0])<13:
@@ -305,19 +329,26 @@ class Cg_molecule:
                         self.topout, bartender_input_info = topology.topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, self.cg_bead_coords, ring_atoms, cg_beads)
                 
                 if bartender:
-                    bartender_out = topology.bartender_input(molname, atoms_in_smi, bartender_input_info)
+                    bartender_out = topology.bartender_input(molecule, molname, atoms_in_smi, bartender_input_info)
                     with open(bartenderfname, "w") as btf:
                         btf.write(bartender_out)
                 
                 if topfname:
                     with open(topfname, "w") as fp:
                         fp.write(self.topout)
-                print("Converged to solution in {} iteration(s)".format(attempt + 1))
+                if not force_map: print("Converged to solution in {} iteration(s)".format(attempt + 1))
+                if force_map: print("Converged to solution in {} iteration(s)".format(attempt + 1 + max_attempts))
                 break
             else:
                 attempt += 1
+        
+                #force mapping by old code if new code doesn't give result
+                if attempt == max_attempts and not force_map:
+                    print("forcing parametrization with first mapping algorithm")
+                    force_map=True
+                    attempt = 0 
 
-        if attempt == max_attempts:
+        if attempt == max_attempts and force_map:
             raise RuntimeError(
                 "ERROR: no successful mapping found.\nTry running with the --fpred and/or --verbose options."
             )

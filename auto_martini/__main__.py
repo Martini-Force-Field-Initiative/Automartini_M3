@@ -35,7 +35,6 @@ import sys
 from . import __version__, solver
 from .topology import gen_molecule_sdf, gen_molecule_smi
 
-
 def checkArgs(args):
     if not args.sdf and not args.smi:
         parser.error("run requires --sdf or --smi")
@@ -66,7 +65,7 @@ group.add_argument(
     required=False,
     help="SMILES string of atomistic structure",
 )
-parser.add_argument("--logp",dest="logp",type=str,required=True,help="File with partial smiles and associated logP")
+parser.add_argument("--logp",dest="logp",type=str,required=None,help="File with partial smiles and associated logP")
 parser.add_argument("--mol", dest="molname", type=str, required=False, help="Name of CG molecule")
 parser.add_argument("--aa", dest="aa", type=str, help="filename of all-atom structure .gro file")
 parser.add_argument("-v","--verbose",dest="verbose",action="count",default=0,help="increase verbosity",)
@@ -98,6 +97,8 @@ else:
     mol, _ = gen_molecule_smi(args.smi)
 topname=args.molname+".itp"
 groname=args.molname+".gro"
+
+
 if args.bartender_output:
     bartenderfname=args.molname+"_bartenderINPUT.dat"
     cg = solver.Cg_molecule(mol, args.smi, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
