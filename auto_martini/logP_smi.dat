@@ -17,10 +17,10 @@ C=CCC	13.4
 CC=CC	13.4
 CCC=C	13.4
 cC(C)C	13.8
+CC(C)C	14.2
 cC	6.4
 Cc	6.4
 ccC	8.4
-cc	4.5
 cc	4.5
 Ccc	6.3
 ccc	6.3
@@ -83,7 +83,7 @@ cI	7.6
 ccI	9.4
 C(I)C	14.3
 Cn	2.3
-cN	
+cN	-2.8	
 CN	-4.1
 CCN	-2.5
 CNC	3.6
@@ -129,3 +129,5 @@ OCC	-5.2
 CC(O)C	-2
 cO	-6.1
 ccO	-4.2
+cc(c)O	-4.2
+cccO	-4.2

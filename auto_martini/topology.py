@@ -693,18 +693,13 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                     for ring in ringatoms:
                         if cgbeads[i] in ring and cgbeads[j] in ring:# and len(ring)<5:
                             constlist.append([i, j, dist])
-                            """in_ring = True
-                            break
-                    if in_ring:
-                        constlist.append([i, j, dist])"""
-                    
-
-                    else:
-                        # Check that the bond is not too short
-                        if dist < 0.15: 
-                            print("distance between beads ",i,j," : ",dist)
+                            #in_ring = True #NEW
+                
+                    if not in_ring: #NEW
+                #    else:
+                        if dist < 0.15: # Check that the bond is not too short
                             raise NameError("Bond too short") #was 0.2
-                        
+                    
                         # Look for a bond between an atom of i and an atom of j
                         found_connection = False
                         atoms_in_bead_i = []
@@ -1377,7 +1372,7 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
                 modified_lines_bonds.append(line+"    1000000")
             else: modified_lines_bonds.append(line)
             if line=="[constraints]":
-                modified_lines_bonds.remove(line)
+                if line in modified_lines_bonds : modified_lines_bonds.remove(line)
                 txt = "#ifndef FLEXIBLE\n[constraints]\n#endif"
                 modified_lines_bonds.append(txt)
 
@@ -1406,10 +1401,10 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
             for line in modified_lines_bonds:
                 if line!="" and len(line.split("   "))>6:
                     if str(remote_beads[0]) == line.split("   ")[1] and str(remote_beads[1]) == line.split("   ")[2] :
-                        modified_lines_bonds.remove(line)
+                        if line in modified_lines_bonds : modified_lines_bonds.remove(line)
                     else:
                         if str(remote_beads[1]) == line.split("   ")[1] and str(remote_beads[0]) == line.split("   ")[2] :
-                            modified_lines_bonds.remove(line)
+                            if line in modified_lines_bonds : modified_lines_bonds.remove(line)
 
 
         modified_bonds_write="\n".join(modified_lines_bonds)
@@ -1495,7 +1490,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
         else:
             modified_lines_bonds.append(line)
         if line=="[constraints]":
-            modified_lines_bonds.remove(line)
+            if line in modified_lines_bonds : modified_lines_bonds.remove(line)
             txt = "#ifndef FLEXIBLE\n[constraints]\n#endif"
             modified_lines_bonds.append(txt)
     modified_bonds_write = "\n".join(modified_lines_bonds)
@@ -1507,7 +1502,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             if len(bond_line)>2 and not line.startswith(";"):
                 for vs, cb in virtual_sites.items():
                     if str(vs+1) == bond_line[1] or str(vs+1) == bond_line[2]:
-                        if line in modified_lines_bonds: modified_lines_bonds.remove(line)
+                        if line in modified_lines_bonds : modified_lines_bonds.remove(line)
     modified_bonds_write = "\n".join(modified_lines_bonds)
 
     #Angles: delete lines describing interactions with VS 
@@ -1520,7 +1515,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             if len(angle_line)>2 and not line.startswith(";"):
                 for vs, cb in virtual_sites.items():
                     if str(vs+1) == angle_line[2] or str(vs+1) == angle_line[3] or str(vs+1) == angle_line[4] :
-                        modified_lines_angles.remove(line)
+                        if line in modified_lines_angles : modified_lines_angles.remove(line)
 
     #Clean angles already described by dihedrals 
     for lineA in modified_lines_angles:
@@ -1529,7 +1524,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             dihed_line = lineD.split(" ")
             if len(dihed_line)>2 and not lineD.startswith(";") and len(angle_line)>2 and not lineA.startswith(";"):
                 if angle_line[2] in dihed_line[2:6] and angle_line[3] in dihed_line[2:6] and angle_line[4] in dihed_line[2:6]:
-                    if lineA  in modified_lines_angles:modified_lines_angles.remove(lineA)
+                    if lineA in modified_lines_angles : modified_lines_angles.remove(lineA)
     modified_angles_write = "\n".join(modified_lines_angles)
 
     if not simple_model:
@@ -1542,7 +1537,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                 if len(dihed_line)>2 and not line.startswith(";"):
                     for vs, cb in virtual_sites.items():
                         if str(vs+1) in dihed_line[:6] :
-                            if line in modified_lines_dihedrals:modified_lines_dihedrals.remove(line)
+                            if line in modified_lines_dihedrals : modified_lines_dihedrals.remove(line)
         modified_dihedrals_write = "\n".join(modified_lines_dihedrals)
     else:
         modified_dihedrals_write = dihedrals_write
@@ -1615,7 +1610,7 @@ def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedr
             modified_lines_bonds.append(line+"    1000000")
         else:modified_lines_bonds.append(line)
         if line=="[constraints]":
-            modified_lines_bonds.remove(line)
+            if line in modified_lines_bonds: modified_lines_bonds.remove(line)
             txt = "#ifndef FLEXIBLE\n[constraints]\n#endif"
             modified_lines_bonds.append(txt)
 
@@ -1643,14 +1638,12 @@ def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedr
                 for line in modified_lines_bonds.copy():
                     if len(line.split("   "))>3 and line.split("   ")[-1]==" 1000000" :
                         if str(closest_bead+1) == line.split("   ")[1] or str(closest_bead+1) == line.split("   ")[2]:
-                            if line in modified_lines_bonds : 
-                                modified_lines_bonds.remove(line)
+                            if line in modified_lines_bonds : modified_lines_bonds.remove(line)
         else:
             for line in modified_lines_bonds.copy():
                 if len(line.split("   "))>3 and line.split("   ")[-1]==" 1000000" :
                     if str(closest_bead+1) == line.split("   ")[1] or str(closest_bead+1) == line.split("   ")[2]:
-                        if line in modified_lines_bonds : 
-                            modified_lines_bonds.remove(line)
+                        if line in modified_lines_bonds : modified_lines_bonds.remove(line)
 
     modified_bonds_write="\n".join(modified_lines_bonds)
 
@@ -1672,14 +1665,12 @@ def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedr
                 for line in modified_lines_angles.copy():
                     if len(line.split(" "))>3:
                         if str(cb+1) == line.split(" ")[2] or str(cb+1) == line.split(" ")[3] or str(cb+1) == line.split(" ")[4] :
-                            if line in modified_lines_angles : 
-                                modified_lines_angles.remove(line)
+                            if line in modified_lines_angles : modified_lines_angles.remove(line)
         else: 
             for line in modified_lines_angles.copy():
                 if len(line.split(" "))>3:
                     if str(closest_bead+1) == line.split(" ")[2] or str(closest_bead+1) == line.split(" ")[3] or str(closest_bead+1) == line.split(" ")[4] :
-                        if line in modified_lines_angles : 
-                            modified_lines_angles.remove(line)
+                        if line in modified_lines_angles : modified_lines_angles.remove(line)
     modified_angles_write = "\n".join(modified_lines_angles)+ "\n"
 
     #for larger molecules clean dihedrals from interactions with beads dirctly below VS
@@ -1693,14 +1684,12 @@ def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedr
                 for line in modified_lines_dihedrals.copy():
                     if len(line.split(" "))>4:
                         if str(cb+1) == line.split(" ")[2] or str(cb+1) == line.split(" ")[3] or str(cb+1) == line.split(" ")[4] or str(cb+1) == line.split(" ")[5] :
-                            if line in modified_lines_dihedrals : 
-                                modified_lines_dihedrals.remove(line)
+                            if line in modified_lines_dihedrals : modified_lines_dihedrals.remove(line)
         else:
             for line in modified_lines_dihedrals.copy():
                 if len(line.split(" "))>4:
                     if str(closest_bead+1) == line.split(" ")[2] or str(closest_bead+1) == line.split(" ")[3] or str(closest_bead+1) == line.split(" ")[4] or str(closest_bead+1) == line.split(" ")[5] :
-                        if line in modified_lines_dihedrals : 
-                            modified_lines_dihedrals.remove(line)
+                        if line in modified_lines_dihedrals : modified_lines_dihedrals.remove(line)
     modified_dihedrals_write = "\n".join(modified_lines_dihedrals)+ "\n"
 
     exclusions_net=""
@@ -1788,8 +1777,8 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
                         (key, val) = line.rstrip().split()
                         logP_data[key] = float(val)
             except Exception as e:
-                #print(f"An error occurred while reading the file: {e}")
-                print("")
+                print(f"An error occurred while reading the logP file")
+                #print("")
         else:
             print(f"Invalid file name: {logp_file}")
         
@@ -1798,13 +1787,13 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
             if smiles == smi:
                 log_p = float(logp)
                 found_smi = True
+                print(f"found logp for smiles {smi} is {log_p}")
+                return log_p
                 break
 
-    if found_smi: 
-        print(f"found logp for smiles {smi} is {log_p}")
-        return log_p
-
-    else:
+    if not found_smi:
+        if converted_smi:
+            smi=real_smi
         req = ""
         soup = ""
         try:
@@ -1901,11 +1890,7 @@ def determine_bead_type(delta_f, charge, hbonda, hbondd, in_ring, smi_frag):
         print("No adequate force-field parameter. The attempt for parametrization will continue.")
         exit(1)
     bead_type = []
-    #if in_ring:
-        # We're in a ring, divide free energy by 3
-        # (average number of beads per ring)
-        #if abs(delta_f) > 0.1:
-        #    delta_f *= 2 / 3.0
+    print(f"charge {charge}, hbonda {hbonda}, hbondd {hbondd}")
     if charge != 0:
         # The compound has a +/- charge -> Q type
 
@@ -1959,5 +1944,5 @@ def determine_bead_type(delta_f, charge, hbonda, hbondd, in_ring, smi_frag):
 
             bead_type=find_closest_logPvalue(delta_f, othertypes,in_ring)
             #logger.debug("closest type: %s; error %7.4f" % (bead_type, min_error))
-
+    print(f"found bead type {bead_type} for smiles {str(smi_frag)} and logp {delta_f} which is {in_ring} in ring")
     return bead_type

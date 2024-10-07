@@ -108,7 +108,7 @@ class Cg_molecule:
         molecule = Chem.Mol(molecule)
         AllChem.EmbedMolecule(molecule)
         AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
-        AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) #was 1.1
+        AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) #was 1.12
 
         feats = topology.extract_features(molecule)
 
