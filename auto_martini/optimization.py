@@ -1,7 +1,7 @@
 """
 Created on March 13, 2019 by Andrew Abi-Mansour
 
-Updated on April 11, 2024 by Magdalena Szczuka
+Updated on November 8, 2024 by Magdalena Szczuka
 
 This is the::
 
@@ -18,6 +18,7 @@ Developers::
 	Tristan BEREAU (bereau at mpip-mainz.mpg.de)
 	Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
 	Andrew Abi-Mansour (andrew.gaam at gmail.com)
+    Magdalena Szczuka (magdalena.szczuka@univ-tlse3.fr)
 
 AUTO_MARTINI is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
@@ -33,7 +34,7 @@ from sys import exit
 import numpy as np
 from collections import namedtuple
 from .common import *
-from . import topology
+from . import topology # AutoM3 change
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +44,13 @@ def read_bead_params():
     CG Bead vdw radius (in Angstroem)"""
     bead_params = dict()
     bead_params["rvdw"] = 4.7 / 2.0     # sigma for non-ring 
-    bead_params["rvdw_aromatic"] = 4.1 / 2.0 #was 4.3 / 2.0    #sigma for ring
+    bead_params["rvdw_aromatic"] = 4.1 / 2.0 #AutoM3 change: was 4.3 / 2.0    #sigma for ring
     bead_params["rvdw_cross"] = 0.5 * ((4.7 / 2.0) + (4.3 / 2.0))
-    bead_params["offset_bd_weight"] =20.0 #was 50.0    #penalty weight for nonring beads
-    bead_params["offset_bd_aromatic_weight"] = 5.0 #was 20.0    #penalty weight for ring beads
-    bead_params["lonely_atom_penalize"] = 0.28  #was 0.20
-    bead_params["bd_bd_overlap_coeff"] = 1.0 #was 9.0
-    bead_params["at_in_bd_coeff"] = 0.9     #atom-bead favored encapsulation - should change???
+    bead_params["offset_bd_weight"] =20.0 #AutoM3 change: was 50.0    #penalty weight for nonring beads
+    bead_params["offset_bd_aromatic_weight"] = 5.0 #AutoM3 change: was 20.0    #penalty weight for ring beads
+    bead_params["lonely_atom_penalize"] = 0.28  #AutoM3 change: was 0.20
+    bead_params["bd_bd_overlap_coeff"] = 1.0 #AutoM3 change: was 9.0
+    bead_params["at_in_bd_coeff"] = 0.9
     return bead_params
 
 
@@ -225,9 +226,9 @@ def check_beads(molecule, list_heavyatoms, heavyatom_coords, trial_comb, ring_at
                             )
     return acceptable_trial
 
-# Ertl Functional Groups Finder algorithm (merge, identify_functional_groups)
+### AutoM3 change :  Including Ertl Functional Groups Finder algorithm (merge, identify_functional_groups) ###
 
-def merge(mol, marked, aset):
+def merge(mol, marked, aset): # AutoM3 change
     #  Original authors: Richard Hall and Guillaume Godin
     #  This file is part of the RDKit.
     #  The contents are covered by the terms of the BSD license
@@ -247,7 +248,7 @@ def merge(mol, marked, aset):
     aset.update(bset)
 
 
-def identify_functional_groups(mol):
+def identify_functional_groups(mol): # AutoM3 change
     # atoms connected by non-aromatic double or triple bond to any heteroatom
     PATT_DOUBLE_TRIPLE = Chem.MolFromSmarts('A=,#[!#6]')
     # atoms in non-aromatic carbon-carbon double or triple bonds
@@ -396,7 +397,7 @@ def find_bead_pos(
             ):
                 list_bonds.append([list_heavy_atoms[i], list_heavy_atoms[j]])
 
-    # Max and Min number of beads. --> in Martini3 it can be 2 to 4 heavy atoms per bead
+    ### AutoM3 change : Max and Min number of beads --> in Martini3 it can be 2 to 4 heavy atoms per bead ###
     max_beads = int(len(list_heavy_atoms) / 2.0)
     min_beads = int(len(list_heavy_atoms) / 4.0)
 
@@ -424,8 +425,8 @@ def find_bead_pos(
             trial_comb = list(seq)
             acceptable_trial = check_beads(
                 molecule, list_heavy_atoms, heavyatom_coords, trial_comb, ring_atoms, list_bonds
-            )
-            #print(f"trial combination {trial_comb} accepted {acceptable_trial}")
+            ) # AutoM3 change : Added molecule argument
+
             if acceptable_trial:
 
                 # Do the energy evaluation
@@ -435,10 +436,10 @@ def find_bead_pos(
 
                 logger.info("; %s %s", trial_comb, trial_ene)
                 # Make sure all atoms within one bead would be connected
-                #print("all atoms are connected in beads: ",all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavy_atoms, list_bonds, molecule, force_map))
                 if all_atoms_in_beads_connected(
                     trial_comb, heavyatom_coords, list_heavy_atoms, list_bonds, molecule, force_map
-                ):
+                ): # AutoM3 change : Added molecule and force_map arguments
+                    
                     # Accept the move
                     if trial_ene < ene_best_trial:
                         ene_best_trial = trial_ene
@@ -452,7 +453,6 @@ def find_bead_pos(
                         ]
                     # Store configuration
                     list_trial_comb.append([trial_comb, beadpos, trial_ene])
-                    print("*** trial combination : ",trial_comb," with energy : ",trial_ene)
 
         if last_best_trial_comb == best_trial_comb:
             break
@@ -462,10 +462,9 @@ def find_bead_pos(
         list_energies.append(energies)
 
     sorted_combs = np.array(sorted(list_trial_comb, key=itemgetter(2)), dtype="object")
-    #print(" sorted_combs : ",sorted_combs[:, 0])
     return sorted_combs[:, 0], sorted_combs[:, 1]
 
-def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, bondlist, mol,force_map):
+def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, bondlist, mol,force_map): #AutoM3 change: added mol, force_map
     """Make sure all atoms within one CG bead are connected to at least
     one other atom in that bead"""
     logger.debug("Entering all_atoms_in_beads_connected()")
@@ -475,12 +474,13 @@ def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, 
     for i in range(len(trial_comb)):
         cgbead_coords.append(heavyatom_coords[list_heavyatoms.index(trial_comb[i])])
     
-    _, num_arom = topology.is_aromatic(mol)
+    _, num_arom = topology.is_aromatic(mol) #AutoM3 change
 
-    if not force_map and num_arom<7:
-        voronoi, _  = voronoi_atoms_new(cgbead_coords, heavyatom_coords)
+    ### AutoM3 change of mapping approach to differenciate molecules with 0-1 and more cycles
+    if not force_map and num_arom<7: #AutoM3 change
+        voronoi, _  = voronoi_atoms_new(cgbead_coords, heavyatom_coords) #AutoM3 change
     else:
-        voronoi, _  = voronoi_atoms_old(cgbead_coords, heavyatom_coords)
+        voronoi, _  = voronoi_atoms_old(cgbead_coords, heavyatom_coords) #AutoM3 change
     logger.debug("voronoi %s" % voronoi)
 
     for i in range(len(trial_comb)):
@@ -503,66 +503,11 @@ def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, 
             return False
     return True
 
-def voronoi_atoms_new_new(cgbead_coords, heavyatom_coords): # new code - based on headliners coordinates and distances between other atoms coordinates 
-    """Partition all atoms between CG beads"""
-    logger.debug("Entering voronoi_atoms()")
-    partitioning = {}
-
-    allow_sharing = False
-    num_shared_at=0
-    if (len(heavyatom_coords) % 2) != 0:
-        allow_sharing = True
-        num_shared_at=round(len(heavyatom_coords)/10)
-
-    # Find closest atoms to atom headliners of beads
-    closest_atoms = {}  # Book-keeping of closest atoms to every bead
-    for i in range(len(cgbead_coords)):
-        distances = {}
-        for j in range(len(heavyatom_coords)):
-            if (cgbead_coords[i] != heavyatom_coords[j]).all():
-                dist_bead_at = np.linalg.norm(cgbead_coords[i] - heavyatom_coords[j])
-                distances[j] = dist_bead_at  # Atom index as key, distance as value
-
-        # Sort distances by value and keep the closest atoms
-        sorted_distances = dict(sorted(distances.items(), key=lambda item: item[1]))
-        closest_atoms[i] = sorted_distances  # Dictionary of atoms and their distances for each bead
-    
-    # Find closest atoms to atom headliners of beads
-    closest_atoms = {}  # Book-keeping of closest atoms to every bead
-    for j in range(len(heavyatom_coords)):
-        closest_atoms[j]={} #atoms as keys
-        distances = {} # dict inside closest_atoms dict with headliner atom (center of bead) as keys and distance between headliner and j as values
-        for i in range(len(cgbead_coords)):
-            distances[i]=np.linalg.norm(cgbead_coords[i] - heavyatom_coords[j])
-        sorted_distances = dict(sorted(distances.items(), key = lambda x: x[1]))
-        closest_atoms[j]=sorted_distances
-    
-    if not allow_sharing:
-        #populate every atom with closest headliner (bead)
-        for a,b in closest_atoms.items():
-            partitioning[a]=next(iter(b))
-
-    print("\n partitioning END: ",partitioning,"\n\n")
-
-    # initiating dict with beads as keys and their coordinates as list of values
-    bead_coord={}
-    for bead in partitioning.values():
-        bead_coord[bead]=[]
-
-    for atom in range(len(heavyatom_coords)):
-        bead=partitioning[atom]
-        bead_coord[bead].append(heavyatom_coords[atom])
-    
-    bead_cog=[]
-    for bead, coords in bead_coord.items():
-        bead_coord = np.stack(coords, axis=0)
-        cog = np.mean(bead_coord, axis=0)
-        bead_cog.append(cog)
-
-    return partitioning, bead_cog
-
-def voronoi_atoms_new(cgbead_coords, heavyatom_coords): # new code - based on headliners coordinates and distances between other atoms coordinates 
-    """Partition all atoms between CG beads"""
+def voronoi_atoms_new(cgbead_coords, heavyatom_coords): # AutoM3
+    """
+    Partition all atoms between CG beads, based on headliners coordinates and distances between other atoms coordinates. 
+    Headliners are atoms with cgbead_coords coordinates.
+    """
     logger.debug("Entering voronoi_atoms()")
     partitioning = {}
 
@@ -650,7 +595,7 @@ def voronoi_atoms_new(cgbead_coords, heavyatom_coords): # new code - based on he
         bead_cog.append(cog)
     return partitioning, bead_cog
 
-def voronoi_atoms_old(cgbead_coords, heavyatom_coords):
+def voronoi_atoms_old(cgbead_coords, heavyatom_coords): #AutoM3 change
     """Partition all atoms between CG beads"""
     logger.debug("Entering voronoi_atoms()")
     partitioning = {}
@@ -707,7 +652,7 @@ def voronoi_atoms_old(cgbead_coords, heavyatom_coords):
                     exit(1)
                 partitioning[closest_bead] = lonely_bead
 
-    # initiating dict with beads as keys and their coordinates as list of values
+    # AutoM3 change : finding the bead center coordinate for COG 
     bead_coord={}
     for bead in partitioning.values():
         bead_coord[bead]=[]
@@ -723,12 +668,13 @@ def voronoi_atoms_old(cgbead_coords, heavyatom_coords):
         bead_cog.append(cog)
     return partitioning, bead_cog
 
-def functional_groups_ok(atom_partitioning,molecule,ringatoms):
-    # checking if functional groups are in distinctive bead
+def functional_groups_ok(atom_partitioning,molecule,ringatoms): # AutoM3
+    """
+    Checking if functional groups are conserved in distinctive bead, within atom number per bead limit.
+    """
 
     fgs = identify_functional_groups(molecule)
     fgs_id=[j[0] for j in [i[0] for i in fgs]]
-    print("ids of FGS ",fgs_id, " and atoms inside : ",[fg.type_atomIds for ix, fg in enumerate(fgs)] )
 
     bead_atoms={}
     for at, bead in atom_partitioning.items():
@@ -753,7 +699,6 @@ def functional_groups_ok(atom_partitioning,molecule,ringatoms):
                 gr_f = True
                 break
         group_found.append(gr_f)
-        print("group", fg.type_atomIds, "found:", gr_f)
 
     # Check if at least 50% of elements in group_found are True
     if group_found.count(True) >= len(group_found) / 2 :
@@ -761,8 +706,10 @@ def functional_groups_ok(atom_partitioning,molecule,ringatoms):
     else:
         return False
 
-def max2arperbead(atom_partitioning, ringatoms):
-    # Create bead_atoms dictionary
+def max2arperbead(atom_partitioning, ringatoms): # AutoM3
+    """ 
+    Checking the number of aromatic atoms in a bead and returning False if it's more than 2.
+    """
     bead_atoms = {}
     for at, bead in atom_partitioning.items():
         if bead not in bead_atoms:

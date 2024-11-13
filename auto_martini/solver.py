@@ -1,7 +1,7 @@
 """
 Created on March 13, 2019 by Andrew Abi-Mansour
 
-Updated on April 11, 2024 by Magdalena Szczuka
+Updated on November 8, 2024 by Magdalena Szczuka
 
 This is the::
 
@@ -18,6 +18,7 @@ Developers::
 	Tristan BEREAU (bereau at mpip-mainz.mpg.de)
 	Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
 	Andrew Abi-Mansour (andrew.gaam at gmail.com)
+    Magdalena Szczuka (magdalena.szczuka@univ-tlse3.fr)
 
 AUTO_MARTINI is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
@@ -51,7 +52,7 @@ def get_coords(conformer, sites, avg_pos, ringatoms_flat):
     return site_coords
 
 
-def check_additivity(forcepred, beadtypes, molecule, mol_smi):
+def check_additivity(forcepred, beadtypes, molecule, mol_smi): #AutoM3 change : added mol_smi argument
     """Check additivity assumption between sum of free energies of CG beads
     and free energy of whole molecule"""
     logger.debug("Entering check_additivity()")
@@ -60,8 +61,7 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi):
     rings = False
     logger.info("; Bead types: %s" % beadtypes)
     for bead in beadtypes:
-        if bead[0] == "S" or bead[0] == "T": # added bead[0] == "T" cuz benzen...
-            #bead = bead[1:]
+        if bead[0] == "S" or bead[0] == "T": # AutoM3 change : added bead "T"
             rings = True
         delta_f_types = topology.read_delta_f_types()
         sum_frag += delta_f_types[bead] #sum of free energies of beads in ring(s)
@@ -69,8 +69,7 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi):
     wc_log_p = rdMolDescriptors.CalcCrippenDescriptors(molecule)[0]
     # Get SMILES string of entire molecule
 
-    #s = Chem.MolToSmiles(molecule)
-    whole_mol_dg = topology.smi2alogps(forcepred, mol_smi, wc_log_p, "MOL",None,None,True) #None,None=converted_smi, real_smi not needed here
+    whole_mol_dg,_ = topology.smi2alogps(forcepred, mol_smi, wc_log_p, "MOL",None,None,True) # AutoM3 change : None,None=converted_smi, real_smi not needed here
     if whole_mol_dg != 0:
         m_ad = math.fabs((whole_mol_dg - sum_frag) / whole_mol_dg)
         logger.info(
@@ -90,21 +89,23 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi):
 class Cg_molecule:
     """Main class to coarse-grain molecule"""
 
-    def __init__(self, molecule, mol_smi, molname, simple_model, topfname,bartenderfname, bartender, logp_file, forcepred=True):
+    def __init__(self, molecule, mol_smi, molname, simple_model, topfname, bartenderfname, bartender, logp_file, forcepred=True):
+        # AutoM3 new arguments : mol_smi, simple_model, bartenderfname, bartender, logp_file
+
         self.heavy_atom_coords = None
-        self.atom_coords = None
+        self.atom_coords = None # AutoM3 new variable 
         self.list_heavyatom_names = None
         self.atom_partitioning = None
         self.cg_bead_names = []
         self.cg_bead_coords = []
         self.topout = None
-        self.bartender_out = None
-        self.molname=molname #for pretty GRO file (will be easier to look on a molecule in VMD with its proper name)
-        force_map = False
+        self.bartender_out = None # AutoM3 new variable 
+        self.molname=molname # AutoM3 change : for pretty GRO file (will be easier to look on a molecule in VMD with its proper name)
+        force_map = False # AutoM3 new variable
 
         logger.info("Entering cg_molecule()")
 
-        #MINIMIZATION with RDkit
+        ### AutoM3 : MINIMIZATION with RDkit ###
         molecule = Chem.Mol(molecule)
         AllChem.EmbedMolecule(molecule)
         AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
@@ -116,11 +117,12 @@ class Cg_molecule:
         list_heavy_atoms, self.list_heavyatom_names = topology.get_atoms(molecule)
 
         conf, self.heavy_atom_coords = topology.get_heavy_atom_coords(molecule)
-        _, self.atom_coords = topology.get_atom_coords(molecule)
+
+        _, self.atom_coords = topology.get_atom_coords(molecule) # AutoM3 : for new voronoi partitioning function
 
         # Identify ring-type atoms
         ring_atoms = topology.get_ring_atoms(molecule)
-        is_arom, num_arom = topology.is_aromatic(molecule)
+        is_arom, num_arom = topology.is_aromatic(molecule) # AutoM3
 
         # Get Hbond information
         hbond_a = topology.get_hbond_a(feats)
@@ -137,7 +139,8 @@ class Cg_molecule:
             list_heavy_atoms,
             self.heavy_atom_coords,
             ring_atoms,
-            ring_atoms_flat, force_map
+            ring_atoms_flat, 
+            force_map # AutoM3 new argument
         )
 
         # Loop through best 1% cg_beads and avg_pos
@@ -159,13 +162,12 @@ class Cg_molecule:
 
             # Extract position of coarse-grained beads
             cg_bead_coords = get_coords(conf, cg_beads, bead_pos, ring_atoms_flat)
-            print("\n\nconsidering configuration : ",cg_beads)
 
-            # Partition atoms into coarse-grained beads
+            ### AutoM3 change : different partition of atoms into coarse-grained beads, depending on the number of aromatic cycles ###
             _, num_arom = topology.is_aromatic(molecule)
 
-            if not force_map and num_arom<7:
-                self.atom_partitioning,_ = optimization.voronoi_atoms_new(
+            if not force_map and num_arom<7: # AutoM3
+                self.atom_partitioning,_ = optimization.voronoi_atoms_new( 
                     cg_bead_coords, self.heavy_atom_coords
                 )
                 _, self.cg_bead_coords = optimization.voronoi_atoms_new(
@@ -178,14 +180,18 @@ class Cg_molecule:
                 _, self.cg_bead_coords = optimization.voronoi_atoms_old(
                     cg_bead_coords, self.atom_coords
                 )
-            print(f"FOUND PARTITIONNING : \n {self.atom_partitioning} \n")
+            
+            
+            # AutoM3 : trying mapping with at least 1 of 2 new conditions : 
+            #    Max 2 aromatic atoms per bead ; 
+            #    Holding Functional groups together in bead ;
+            
             max_fails=1
             fails=0
 
             if is_arom and (num_arom % 2) == 0: #only for pair number of aromatic atoms (actual code prevents sharing/mismatch)
                 if not optimization.max2arperbead(self.atom_partitioning, ring_atoms):
                     fails += 1
-                    print("THERE ARE MORE THAN 2 AROMATIC ATOMS PER BEAD")
 
             if not optimization.functional_groups_ok(self.atom_partitioning,molecule, ring_atoms):
                 fails += 1
@@ -212,16 +218,16 @@ class Cg_molecule:
                 self.atom_partitioning,
                 ring_atoms,
                 ring_atoms_flat,
-                logp_file,
+                logp_file, # AutoM3 new argument
                 True,
             )
-            bd= bead_types
 
             if not self.cg_bead_names:
                 success = False
             # Check additivity between fragments and entire molecule
             if not check_additivity(forcepred, bead_types, molecule, mol_smi):
                 success = False
+            
             # Bond list
             try:
                 bond_list, const_list, _ = topology.print_bonds(
@@ -229,7 +235,7 @@ class Cg_molecule:
                     molecule,
                     self.atom_partitioning,
                     self.cg_bead_coords,
-                    bd,
+                    bead_types, # AutoM3 change
                     ring_atoms,
                     trial=True,
                 )
@@ -246,9 +252,10 @@ class Cg_molecule:
             if len(cg_beads) != len(self.cg_bead_names):
                 success = False
                 errval = 8
+            
             if success:
                 header_write = topology.print_header(molname, mol_smi)
-                self.cg_bead_names, bead_types, atoms_write, atoms_in_smi = topology.print_atoms(
+                self.cg_bead_names, bead_types, atoms_write, atoms_in_smi = topology.print_atoms( # AutoM3 new variable : atoms_in_smi
                     molname,
                     forcepred,
                     cg_beads,
@@ -258,7 +265,7 @@ class Cg_molecule:
                     self.atom_partitioning,
                     ring_atoms,
                     ring_atoms_flat,
-                    logp_file,
+                    logp_file, # AutoM3 change
                     trial=False,
                 )
 
@@ -267,18 +274,18 @@ class Cg_molecule:
                     molecule,
                     self.atom_partitioning,
                     self.cg_bead_coords,
-                    bd,
+                    bead_types, # AutoM3 change
                     ring_atoms,
                     False,
                 )
 
-                if not simple_model:
+                if not simple_model: # AutoM3
                     dihedrals_write = topology.print_dihedrals(
                     cg_beads,
                     const_list,
                     ring_atoms,
                     self.cg_bead_coords,
-                    bd,
+                    bead_types, # AutoM3 change
                     molecule,
                     self.atom_partitioning
                     )
@@ -288,7 +295,7 @@ class Cg_molecule:
                     molecule,
                     self.atom_partitioning,
                     self.cg_bead_coords,
-                    bd,
+                    bead_types, # AutoM3 change
                     bond_list,
                     const_list,
                     ring_atoms,
@@ -306,24 +313,16 @@ class Cg_molecule:
                         errval = 7
 
 
-                self.topout, bartender_input_info = topology.topout(header_write,atoms_write,bonds_write,angles_write)
+                self.topout, bartender_input_info = topology.topout(header_write,atoms_write,bonds_write,angles_write) # AutoM3 change : possible simple output w/o dihedrals, virtual sites
+
+
+                ### AutoM3 outputs ###
+
                 if len(ring_atoms)>0 and not simple_model:
                     if len(ring_atoms[0])>7:
                         vs_write, virtual_sites, vs_bead_coords  = topology.print_virtualsites(ring_atoms,cg_bead_coords,self.atom_partitioning,molecule)
                         
-                        """#for dummy VS code
-                        if len(ring_atoms[0])<13:
-                            self.cg_bead_coords.append(vs_bead_coords)
-                        else:
-                            self.cg_bead_coords.extend(vs_bead_coords)"""
-                        
                         self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,simple_model)
-                        
-                        """#for dummy VS code
-                        if len(ring_atoms[0])<13 or len(virtual_sites)<2:
-                            self.cg_bead_names.append(vs_bead_names)
-                        else:
-                            self.cg_bead_names.extend(vs_bead_names)"""
                     
                     else:
                         self.topout, bartender_input_info = topology.topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, self.cg_bead_coords, ring_atoms, cg_beads)
@@ -342,9 +341,8 @@ class Cg_molecule:
             else:
                 attempt += 1
         
-                #force mapping by old code if new code doesn't give result
+                # AutoM3 change : force mapping by old code if new code doesn't give result
                 if attempt == max_attempts and not force_map:
-                    print("forcing parametrization with first mapping algorithm")
                     force_map=True
                     attempt = 0 
 
@@ -352,7 +350,7 @@ class Cg_molecule:
             raise RuntimeError(
                 "ERROR: no successful mapping found.\nTry running with the --fpred and/or --verbose options."
             )
-    def output_aa(self, aa_output=None):
+    def output_aa(self, aa_output=None): # AutoM3 change : molname is the same as argument --mol given at the beginning
         # Optional all-atom output to GRO file
         aa_out = output.output_gro(self.heavy_atom_coords, self.list_heavyatom_names, self.molname)
         if aa_output:
@@ -361,7 +359,7 @@ class Cg_molecule:
         else:
             return aa_out
 
-    def output_cg(self, cg_output=None):
+    def output_cg(self, cg_output=None): # AutoM3 change : molname is the same as argument --mol given at the beginning
         # Optional coarse-grained output to GRO file
         cg_out = output.output_gro(self.cg_bead_coords, self.cg_bead_names, self.molname)
         if cg_output:

@@ -45,6 +45,7 @@ def output_gro(sites, site_names, molname):
         exit(1)
     gro_out += "{:s} generated from auto_martini\n".format(molname)
     gro_out += "{:5d}\n".format(num_beads)
+    if len(molname)>4:molname=molname[:4]
     for i in range(num_beads):
         gro_out += "{:5d}{:<6s} {:3s}{:5d}{:8.3f}{:8.3f}{:8.3f}\n".format(
             1, #was i +1, but this is GRO file for one molecule, so all beads should be a part of the same molecule

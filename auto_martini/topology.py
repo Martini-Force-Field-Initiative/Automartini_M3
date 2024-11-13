@@ -1,7 +1,7 @@
 """
 Created on March 13, 2019 by Andrew Abi-Mansour
 
-Updated on April 11, 2024 by Magdalena Szczuka
+Updated on November 8, 2024 by Magdalena Szczuka
 
 This is the::
 
@@ -18,6 +18,7 @@ Developers::
 	Tristan BEREAU (bereau at mpip-mainz.mpg.de)
 	Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
 	Andrew Abi-Mansour (andrew.gaam at gmail.com)
+    Magdalena Szczuka (magdalena.szczuka@univ-tlse3.fr)
 
 AUTO_MARTINI is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
@@ -56,9 +57,10 @@ factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
 
 
 def read_delta_f_types():
-    """Returns delta_f types dictionary
-    Measured octanol/water free energies from MARTINI 2021
-    https://doi.org/10.1038/s41592-021-01098-3"""
+    """
+    AutoM3 : New data for Martini 3 Force Field, from SI https://doi.org/10.1038/s41592-021-01098-3
+    Returns delta_f types dictionary
+    """
     delta_f_types = dict()
     delta_f_types = {"C1":18.9,"C2":14.8,"C3":13.8,"C4":13.4,"C5":11.2,"C6":10.1,"N1":8.1,"N2":5.6,"N3":1.8,"N4":2.2,"N5":0.0,"N6":-1.1,"P1":-2.0,"P2":-3.8,"P3":-5.1,"P4":-7.4,"P5":-9.1,
                      "P6":-9.2,"X1":14.3,"X2":12.7,"X3":13.9,"X4":8.7,"N1d":10.7,"N1a":10.7,"N2d":7.8,"N2a":7.8,"N3d":3.8,"N3a":3.8,"N4d":4.3,"N4a":4.3,"N5d":2.2,"N5a":2.2,"N6d":1.0,
@@ -144,7 +146,8 @@ def gen_molecule_sdf(sdf):
 
 def mol_to_ascii(mol):
     """
-    script adapted from rdkit_print_mol_ascii.ipynb by Vincent F. Scalfani (git: vfscalfani)
+    AutoM3 : script for drawing simple molecule figure in itp file,
+    adapted from rdkit_print_mol_ascii.ipynb by Vincent F. Scalfani (git: vfscalfani)
     """
     #1. Draw mol with rdCoordGen
     rdCoordGen.AddCoords(mol)
@@ -247,10 +250,13 @@ def mol_to_ascii(mol):
 def print_header(molname, mol_smi):
     """Print topology header"""
     text = "; GENERATED WITH Auto_Martini M3FF for {}\n".format(molname)
+    
+    ### AutoM3 script for drawing a molecule in itp output file ###
     ascii_art = ""
     mol = Chem.MolFromSmiles(mol_smi)
     if mol is not None:
         ascii_art = mol_to_ascii(mol)
+    
     info = (
         "; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour\n"
         + "; updated to Martini3 by Magdalena Szczuka, reviewed by Matthieu Chavent \n"
@@ -261,7 +267,7 @@ def print_header(molname, mol_smi):
         + "  {:5s}         2\n\n".format(molname)
         + "[atoms]\n"
         + "; id      type   resnr residue atom    cgnr    charge  mass ;  smiles    ; atom_num"
-    )
+    ) # AutoM3 : added mass and additionnal comments
     return text + info
 
 def letter_occurrences(string):
@@ -320,19 +326,10 @@ def get_atoms(molecule):
         exit(1)
     return list_heavyatoms, list_heavyatomnames
 
-def get_ring_atoms_old(molecule):
-    """Get ring atoms"""
-    logger.debug("Entering get_ring_atoms()")
-    ringatoms = []
-    ringinfo = molecule.GetRingInfo()
-    rings = ringinfo.AtomRings()
-    for at in rings:
-        ring = list(sorted(at))
-        ringatoms.append(ring)
-    return ringatoms
-
 def get_ring_atoms(mol):
-    #get ring atoms and systems of joined rings 
+    """
+    AutoM3 code : get ring atoms and systems of joined rings 
+    """
     logger.debug("Entering get_ring_atoms()")
     
     rings = mol.GetRingInfo().AtomRings()
@@ -351,7 +348,7 @@ def get_ring_atoms(mol):
 
     return [list(ring) for ring in ring_systems]
 
-def is_aromatic(mol):
+def is_aromatic(mol): # AutoM3 function
     aromatic_atoms = [atom.GetIsAromatic() for atom in mol.GetAtoms()]
     num_aromatic_atoms = sum(aromatic_atoms)
     return (num_aromatic_atoms > 0, num_aromatic_atoms)
@@ -369,7 +366,7 @@ def get_heavy_atom_coords(molecule):
 
     return conformer, heavyatom_coords
 
-def get_atom_coords(molecule):
+def get_atom_coords(molecule): # AutoM3 function
     """Extract atomic coordinates of heavy atoms in molecule mol"""
     logger.debug("Entering get_heavy_atom_coords()")
     heavyatom_coords = []
@@ -387,7 +384,7 @@ def extract_features(molecule):
     features = factory.GetFeaturesForMol(molecule)
     return features
 
-def cyclic_smi_conversion(smi):
+def cyclic_smi_conversion(smi): # AutoM3 function
     smi = smi.replace("ccc","CC=C")
     smi = smi.replace("cc","C=C")
     smi = smi.replace("c","C")
@@ -396,18 +393,19 @@ def cyclic_smi_conversion(smi):
     smi = smi.replace("o","O")
     return (smi)
 
-def find_closest_key(dictionary, target_value):
+def find_closest_key(dictionary, target_value): # AutoM3 function
     lst=list(dictionary.keys())
     closest_key = lst[min(range(len(lst)), key = lambda i: abs(lst[i]-target_value))]
     return closest_key
 
-def rearrange_until_match(input_string):
+def rearrange_until_match(input_string): # AutoM3 function
     letters = [char for char in input_string if char.isalpha()]
     random.shuffle(letters)
     result_string = '-'.join(letters)
     return result_string
 
-def read_params(val, size): #returns force of the closest to given parameter
+def read_params(val, size):  # AutoM3 function 
+    """Returns force of the closest to given parameter"""
     bonds = {'S-S': {0.36: 5000.0, 0.378: 5000.0, 0.321: 25000.0, 0.331: 5000.0, 0.3: 5000.0, 0.37: 5000.0, 0.281: 25000.0,
                      0.314: 25000.0, 0.32: 7500.0, 0.38: 5000.0, 0.33: 17000.0, 0.405: 5000.0, 0.395: 5000.0, 0.39: 5000.0,
                      0.385: 5000.0, 0.35: 5000.0, 0.375: 3500.0, 0.376: 7000.0, 0.34: 7000.0},
@@ -501,7 +499,7 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
 
     num_atoms = molecule.GetConformer().GetNumAtoms()
 
-    #number of each atom in bead
+    #AutoM3 change : number of each atom in bead
     atoms_in_smi=" ; atoms: "
     for at,bd in partitioning.items():
         if bd ==cg_bead:
@@ -527,7 +525,7 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
     # Then heavy atoms that aren't part of the CG bead #(except those
     # involved in the same ring).
     for i in partitioning.keys():
-        if partitioning[i] != cg_bead:# and i not in atoms_in_ring:
+        if partitioning[i] != cg_bead: # AutoM3 change
             # find atom from coordinates
             submol = frag.GetMol()
             for j in range(submol.GetConformer().GetNumAtoms()):
@@ -546,6 +544,8 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
             chg += molecule.GetAtomWithIdx(i).GetFormalCharge()
 
     smi = Chem.MolToSmiles(Chem.rdmolops.AddHs(frag.GetMol(), addCoords=True))
+
+    ### AutoM3 ###
     converted_smi=False
     if "c" or "n" or "s" in smi:
         converted_smi=True
@@ -556,7 +556,8 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
 
     return smi, wc_log_p, chg, atoms_in_smi,converted_smi,real_smi
 
-def get_mass(smi):
+def get_mass(smi): # AutoM3
+    """Gets real mass of atoms in smile code"""
     smi_mass=0
     atom_mass={"C":12,"O":16,"N":14,"S":32,"Cl":35,"I":127,"F":19,"Br":80,"P":31,"Si":28,"B":11,"Be":9,"Li":1,"Mg":24,"Ca":40,"K":39}
     i = 0
@@ -571,14 +572,18 @@ def get_mass(smi):
             i += 1
     return smi_mass
 
-def get_standard_mass(bead_type):
+def get_standard_mass(bead_type): # AutoM3
+    """Gets standard mass of atoms in smile code"""
     if bead_type.startswith('T'): return 36
     else: 
         if bead_type.startswith('S'): return 54
         else: return 72
 
 def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ringatoms,ringatoms_flat,logp_file,trial=False):
-    """Print CG Atoms in itp format"""
+    """
+    Print CG Atoms in itp format
+    AutoM3 added argument : logp_file
+    """
 
     logger.debug("Entering print_atoms()")
     atomnames = []
@@ -594,7 +599,7 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
             )
         except Exception:
             raise
-        atoms_in_smi_dict[bead+1]=atoms_in_smi.replace(" ; atoms: ","")
+        atoms_in_smi_dict[bead+1]=atoms_in_smi.replace(" ; atoms: ","") # AutoM3
 
         atom_name = ""
         for character, count in sorted(six.iteritems(letter_occurrences(smi_frag))):
@@ -617,10 +622,11 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
             # frag_heavyatom_coord_list.append(frag_HA_coord_towrite)
             charge_frag = get_charge(mol_frag)
 
-            # Extract ALOGPS free energy
+            # Extract ALOGPS free energy 
+            # AutoM3 added variable logporigin to recognize which logp was found with ALOGPS and comment it in itp output file
             try:
                 if charge_frag == 0:
-                    alogps = smi2alogps(forcepred, smi_frag, wc_log_p, bead + 1,converted_smi, real_smi,logp_file, trial)
+                    alogps, logporigin = smi2alogps(forcepred, smi_frag, wc_log_p, bead + 1,converted_smi, real_smi,logp_file, trial)
                 else:
                     alogps = 0.0
             except (NameError, TypeError, ValueError):
@@ -638,10 +644,8 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
                     break
 
             in_ring = cgbeads[bead] in ringatoms_flat
-            in_ring_txt=""
-            if in_ring:
-                in_ring_txt=";ring"
-            bead_type = determine_bead_type(alogps, charge, hbond_a_flag, hbond_d_flag, in_ring, smi_frag)
+
+            bead_type = determine_bead_type(alogps, charge, hbond_a_flag, hbond_d_flag, in_ring, smi_frag) # AutoM3 change : added smi_frag argument
             atom_name = ""
             name_index = 0
             while atom_name in atomnames or name_index == 0:
@@ -652,6 +656,7 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
             mass = get_standard_mass(bead_type)
 
             if not trial:
+                if len(molname)>4:molname=molname[:4]
                 text = (
                     text
                     + "\n   {:<5d}   {:5s}   1   {:5s}   {:7s}   {:<5d}   {:2d}   {:3d}   ;   {:8s}{:8s}{:9s}".format(
@@ -661,44 +666,44 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
                         atom_name,
                         bead + 1,
                         charge,
-                        mass, 
-                        smi_frag,
-                        atoms_in_smi,
-                        in_ring_txt
+                        mass, # AutoM3
+                        smi_frag, # AutoM3
+                        atoms_in_smi, # AutoM3
+                        logporigin # AutoM3
                     )
                 )
             beadtypes.append(bead_type)
 
-    return atomnames, beadtypes, text, atoms_in_smi_dict
+    return atomnames, beadtypes, text, atoms_in_smi_dict    # AutoM3 new variable : atoms_in_smi_dict
 
 def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringatoms, trial=False):
     """print CG bonds in itp format"""
+
     logger.debug("Entering print_bonds()")
 
     # Bond information
     bondlist = []
     constlist = []
     text = ""
-    cpt_ringatoms = 0
-    if ringatoms != []: cpt_ringatoms=len(ringatoms[0])
+    cpt_ringatoms = 0 #AutoM3 change
+    if ringatoms != []: cpt_ringatoms=len(ringatoms[0]) #AutoM3 change
 
 
     if len(cgbeads) > 1:
         for i in range(len(cgbeads)):
             for j in range(i + 1, len(cgbeads)):
                 dist = np.linalg.norm(cgbead_coords[i] - cgbead_coords[j]) * 0.1
-                if dist < 0.65: #was  0.5
+                if dist < 0.65:  #AutoM3 change : was  0.5
                     # Are atoms part of the same ring
                     in_ring = False
                     for ring in ringatoms:
-                        if cgbeads[i] in ring and cgbeads[j] in ring:# and len(ring)<5:
+                        if cgbeads[i] in ring and cgbeads[j] in ring: #AutoM3 change : was (...) and len(ring)<5:
                             constlist.append([i, j, dist])
-                            #in_ring = True #NEW
+                            #AutoM3 change : was in_ring = True 
                 
-                    if not in_ring: #NEW
-                #    else:
-                        if dist < 0.15: # Check that the bond is not too short
-                            raise NameError("Bond too short") #was 0.2
+                    if not in_ring: #AutoM3
+                        if dist < 0.15: # AutoM3 change : was 0.2
+                            raise NameError("Bond too short") 
                     
                         # Look for a bond between an atom of i and an atom of j
                         found_connection = False
@@ -721,16 +726,19 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                                 and abond.GetEndAtomIdx() in atoms_in_bead_i
                             ):
                                 found_connection = True
+                        ### AutoM3 ### 
                         for ib in range(len(molecule.GetBonds())):
                             abond = molecule.GetBondWithIdx(ib)
                             if (abond.GetBeginAtomIdx() == i and abond.GetEndAtomIdx() == j) or (abond.GetBeginAtomIdx() == j and abond.GetEndAtomIdx() == i):
                                 found_connection = True
                         if found_connection:
                             bondlist.append([i, j, dist])
-                        else: 
+                        else:
                             if cpt_ringatoms<7 and len(cgbeads)<5 and [i, j, dist] not in constlist:
                                 constlist.append([i, j, dist])
-        "(...)"
+        
+        # AutoM3 : removed chunk
+
         # Go through list of constraints. If we find an extra
         # possible constraint between beads that have constraints,
         # add it.
@@ -750,7 +758,7 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                         break
                 if not const_exists:
                     dist = np.linalg.norm(cgbead_coords[i] - cgbead_coords[j]) * 0.1
-                    if any(dist  != bl[2] for bl in bondlist): #< 0.35:
+                    if any(dist  != bl[2] for bl in bondlist): # AutoM3 change : was   if dist < 0.35:
                         # Check that it's not in the bond list
                         in_bond_list = False
                         for b in bondlist:
@@ -768,6 +776,7 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                             constlist.append([i, j, dist])
 
         if not trial:
+            ### AutoM3 ###
             beadlist=[]
             for bead in beadtypes:
                 if not bead.startswith('T') and not bead.startswith('S'): beadlist.append('R')
@@ -837,7 +846,7 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
                         all_constraints = True
                     if (
                         not all_in_ring
-                        and (ij_bonded or jk_bonded) #was and
+                        and (ij_bonded or jk_bonded) # AutoM3 change : was ( _ and _ )
                         and i != j
                         and j != k
                         and i != k
@@ -863,7 +872,7 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
                         for aa in partitioning.keys():
                             if partitioning[aa] == j:
                                 atoms_in_fragment.append(aa)
-                        forc_const = 100.0
+                        forc_const = 100.0 # AutoM3 change : was 25.0
                         for ib in range(len(molecule.GetBonds())):
                             abond = molecule.GetBondWithIdx(ib)
                             if (
@@ -882,6 +891,8 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
                         if new_angle:
                             angle_list.append([i, j, k, angle, forc_const])
 
+        
+        ### AutoM3 ###
         beadlist=[]
         for bead in beadtypes:
             if not bead.startswith('T') and not bead.startswith('S'): beadlist.append('R')
@@ -891,6 +902,7 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
             text = text + "\n[angles]\n"
             text = text + "; i j k         funct   angle   force.c.\n"
             for a in angle_list:
+                ### AutoM3 ###
                 force = read_params(a[3],beadlist[a[0]]+"-"+beadlist[a[1]]+"-"+beadlist[a[2]])
                 if force is None : force=a[4]
                 text = text + "  {:d} {:d} {:d}         1       {:<5.1f}  {:5.1f}\n".format(
@@ -903,7 +915,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
     """Print CG dihedrals in itp format"""
     logger.debug("Entering print_dihedrals()")
 
-    new_dihed_list = []
+    new_dihed_list = [] # AutoM3
     text = ""
     num_ar=0
 
@@ -916,7 +928,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
                 for k in range(len(cgbeads)):
                     for l in range(len(cgbeads)):
                         if i != j and i != k and i != l and j != k and j != l and k != l:
-                            # 3 atoms need to be ring like (in one ring!) --> 4???????
+
                             three_in_ring = False
                             for ring in ringatoms:
                                 num_ar+=len(ring)
@@ -936,7 +948,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
                                 if k in [b[0], b[1]] and l in [b[0], b[1]]:
                                     pass
                             # Distance criterion--beads can't be far apart
-                            disthres = 0.5 #was 45,35
+                            disthres = 0.5 #AutoM3 change : was 0.35
                             close_enough = False
                             if (
                                 np.linalg.norm(cgbead_coords[i] - cgbead_coords[j]) * 0.1
@@ -966,6 +978,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
                                 forc_const = 10.0
                                 dihed_list.append([i, j, k, l, angle, forc_const])
         
+        ### AutoM3 ###
         bead_in_ring_coords={}
         for nb,bead_nb in enumerate(cgbeads):
             for ring in ringatoms:
@@ -988,6 +1001,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
                             new_dihed_list.remove(di)
                     
             for d in new_dihed_list:
+                ### AutoM3 ###
                 force=read_params(d[4],beadlist[d[0]]+"-"+beadlist[d[1]]+"-"+beadlist[d[2]]+"-"+beadlist[d[3]])
                 if num_ar>0 and (d[0] or d[1] or d[2] or d[3] not in bead_in_ring_coords.keys()) and force is not None: force=force/2 #for dihedral between cycle-bead and non-cycled bead: dicrease of force
                 if force is None: force=d[5]
@@ -999,8 +1013,11 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
                 )
     return text
 
-def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol):
-    """Print CG virtual sites in itp format"""
+def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 ###
+    """
+    Introduced in AutoM3.
+    Prints CG virtual sites in itp format.
+    """
     logger.debug("Entering print_virtualsites()")
 
     text = ""
@@ -1120,100 +1137,9 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol):
                             )
     return text, virtual_sites,vs_bead_coords
 
-def print_virtualsites_coordbased(ringatoms,cg_bead_coords,partitionning,mol):
-    """Print CG virtual sites in itp format"""
-    logger.debug("Entering print_virtualsites()")
 
-    text = ""
-    ring_atoms=[]
-    virtual_sites={}
-    for ra in ringatoms: ring_atoms+=ra
-
-    bead_in_ring_coords={}
-    vs_bead_coords=[]
-
-    for atom,bead in partitionning.items():
-        if atom in ring_atoms and bead not in bead_in_ring_coords:
-            bead_in_ring_coords[bead]=cg_bead_coords[bead]
-    
-    distances = {}
-    for bead, coord in bead_in_ring_coords.items():
-        distances[bead]={}
-        for other_bead, other_coord in bead_in_ring_coords.items():
-            if bead != other_bead:
-                distance = ((coord[0] - other_coord[0]) ** 2 + (coord[1] - other_coord[1]) ** 2 + (coord[2] - other_coord[2]) ** 2) ** 0.5 
-                distances[bead][other_bead]=distance
-
-    cumulative_distances = {}
-    for bead, dist in distances.items():
-        cumulative_distance = 0
-        for other_bead,distance in dist.items():
-            cumulative_distance += distance
-        cumulative_distances[bead] = cumulative_distance
-    
-    if len(ring_atoms)<13:
-        # Find the bead with the minimum cumulative distance = bead in the middle
-        middle_bead = min(cumulative_distances, key=cumulative_distances.get)
-        #finding coord of VS
-        for i in range(len(cg_bead_coords)):
-            if i==middle_bead: vs_bead_coords.append(cg_bead_coords[i])
-        
-        constructing_beads_dist=dict(sorted(distances[middle_bead].items(), key=lambda item: item[1]))
-        constructing_beads=[bead for bead in constructing_beads_dist.keys()]
-        virtual_sites[middle_bead]=constructing_beads[:4]
-
-    else:
-        if len(ring_atoms)<16:
-            sorted_beads = sorted(cumulative_distances.keys(), key=cumulative_distances.get)
-            middle_bead_1, middle_bead_2 = sorted_beads[:2]
-            for i in range(len(cg_bead_coords)):
-                if i in sorted_beads[:2]: vs_bead_coords.append(cg_bead_coords[i])
-
-            constructing_beads_dist1 = dict(sorted(distances[middle_bead_1].items(), key=lambda item: item[1]))
-            constructing_beads_1 = [bead for bead in constructing_beads_dist1.keys() if bead not in virtual_sites]
-            virtual_sites[middle_bead_1] = constructing_beads_1[:4]
-
-            constructing_beads_dist2 = dict(sorted(distances[middle_bead_2].items(), key=lambda item: item[1]))
-            constructing_beads_2 = [bead for bead in constructing_beads_dist2.keys() if bead not in virtual_sites]
-            virtual_sites[middle_bead_2] = constructing_beads_2[:4]
-        else:
-            sorted_beads = sorted(cumulative_distances.keys(), key=cumulative_distances.get)
-            middle_bead_1, middle_bead_2, middle_bead_3, middle_bead_4 = sorted_beads[:4]
-            for i in range(len(cg_bead_coords)):
-                if i in sorted_beads[:4]: vs_bead_coords.append(cg_bead_coords[i])
-
-            constructing_beads_dist1 = dict(sorted(distances[middle_bead_1].items(), key=lambda item: item[1]))
-            constructing_beads_1 = [bead for bead in constructing_beads_dist1.keys() if bead not in virtual_sites]
-            virtual_sites[middle_bead_1] = constructing_beads_1[:4]
-
-            constructing_beads_dist2 = dict(sorted(distances[middle_bead_2].items(), key=lambda item: item[1]))
-            constructing_beads_2 = [bead for bead in constructing_beads_dist2.keys() if bead not in virtual_sites]
-            virtual_sites[middle_bead_2] = constructing_beads_2[:4]
-
-            constructing_beads_dist3 = dict(sorted(distances[middle_bead_3].items(), key=lambda item: item[1]))
-            constructing_beads_3 = [bead for bead in constructing_beads_dist3.keys() if bead not in virtual_sites]
-            virtual_sites[middle_bead_3] = constructing_beads_3[:4]
-
-            constructing_beads_dist4 = dict(sorted(distances[middle_bead_4].items(), key=lambda item: item[1]))
-            constructing_beads_4 = [bead for bead in constructing_beads_dist4.keys() if bead not in virtual_sites]
-            virtual_sites[middle_bead_4] = constructing_beads_4[:4]
-
-
-    text = text + "\n[virtual_sitesn]\n"
-    text = text + "; site funct  constructing atom indices"
-    for vs, cb in virtual_sites.items():
-        if len(cb)==4:text = (text + "\n   {:d}       1     {:d} {:d} {:d} {:d}".format(
-                                    vs+1, cb[0] + 1, cb[1] + 1, cb[2] + 1, cb[3] + 1
-                                )
-                            )
-        if len(cb)==3:text = (text + "\n   {:d}       1     {:d} {:d} {:d}".format(
-                                    vs+1, cb[0] + 1, cb[1] + 1, cb[2] + 1
-                                )
-                            )
-    return text, virtual_sites,vs_bead_coords
-
-def print_virtualsites_dummy(cg_beads,ring_atoms,cg_bead_coords):
-    """Print CG virtual sites in itp format"""
+def print_virtualsites_dummy(cg_beads,ring_atoms,cg_bead_coords): ### AutoM3 ###
+    """Archived AutoM3 function for printing dummy CG virtual sites in itp format. Dummy VS = non existent bead."""
     logger.debug("Entering print_virtualsites()")
 
     text = ""
@@ -1326,9 +1252,10 @@ def print_virtualsites_dummy(cg_beads,ring_atoms,cg_bead_coords):
     return text, virtual_sites, vs_bead_coords
 
 def topout(header_write,atoms_write,bonds_write,angles_write):
+    """Print simple itp file"""
     text=header_write +"\n"+ atoms_write + "\n" + bonds_write + "\n" + angles_write
 
-    #bartender info search
+    #AutoM3 : bartender info search
     bartender_input_info={}
     bartender_input_info["BONDS"]=[]
     for line in list(bonds_write.split("\n")):
@@ -1343,7 +1270,8 @@ def topout(header_write,atoms_write,bonds_write,angles_write):
             bartender_input_info["ANGLES"].append(x[2:5])
     return text, bartender_input_info
 
-def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, bead_coords, ring_atoms, cg_beads):
+def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, bead_coords, ring_atoms, cg_beads): ### AutoM3 ###
+    """AutoM3 : Print itp file without virtual sites, upon users wish"""
     text = ""
 
     molname=""
@@ -1438,7 +1366,8 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
     text = modified_header_write +"\n"+ atoms_write +"\n"+ modified_bonds_write +"\n"+ modified_angles_write +"\n"+ dihedrals_write+exclusions_net
     return text, bartender_input_info
 
-def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, simple_model):
+def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, simple_model): ### AutoM3 ###
+    """AutoM3 : Prints whole .itp file with all bonded and nonbonded parameters. """
     text = ""
     bartender_input_info={}
     nb_beads=0
@@ -1457,20 +1386,20 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
     for vs, cb in virtual_sites.items():
         for i, line in enumerate(modified_lines_atoms):
             if line:
-                atom_line = line.split("   ")
-                if str(vs+1) == atom_line[1] and atom_line[11] != '  0': 
-                    vs_bead_names+=atom_line[2]
-                    vs_mass[vs]=int(atom_line[11])
-                    modified_lines_atoms[i]=line.replace(atom_line[11],"  0")
+                atom_line = line.split()
+                if str(vs+1) == atom_line[0] and atom_line[7] != '0': 
+                    vs_bead_names+=atom_line[1]
+                    vs_mass[vs]=int(atom_line[7])
+                    modified_lines_atoms[i]=line.replace(atom_line[7],"  0")
 
     for vs, cb in virtual_sites.items():
         for vs_env in cb:
             for j, line2 in enumerate(modified_lines_atoms):
                 if line2 :
-                    atom_line2 = line2.split("   ")
-                    if str(vs_env+1) == atom_line2[1]:
-                        new_mass = int(int(atom_line2[11]) + vs_mass[vs] / len(cb) ) #add 1/cb mass of VS
-                        modified_lines_atoms[j]=line2.replace(atom_line2[11], " " + str(new_mass))
+                    atom_line2 = line2.split()
+                    if str(vs_env+1) == atom_line2[0]:
+                        new_mass = int(int(atom_line2[7]) + vs_mass[vs] / len(cb) ) #add 1/cb mass of VS
+                        modified_lines_atoms[j]=line2.replace(atom_line2[7], " " + str(new_mass))
     modified_atoms_write = "\n".join(modified_lines_atoms)
 
     modified_lines_header=[]
@@ -1569,7 +1498,8 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
     text = modified_header_write +"\n"+ modified_atoms_write+"\n"+ modified_bonds_write+"\n"+ modified_angles_write+ "\n"+ modified_dihedrals_write + "\n"+ vs_write + exclusions_net
     return text, vs_bead_names, bartender_input_info
 
-def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, bead_coords):
+def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, bead_coords): ### AutoM3 ###
+    """Archived AutoM3 : Prints whole .itp file with all bonded and nonbonded parameters. """
     text = ""
     bartender_input_info={}
 
@@ -1722,7 +1652,8 @@ def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedr
     text = modified_header_write + modified_atoms_write+ modified_bonds_write+ modified_angles_write+ modified_dihedrals_write + vs_write + exclusions_net
     return text, vs_bead_names, bartender_input_info
 
-def bartender_input(mol, molname, atoms_in_beads, bart_info_dict):
+def bartender_input(mol, molname, atoms_in_beads, bart_info_dict): ### AutoM3 ###
+    """ Generates ready t use input data for Bartender """
     text=f"# INPUT data for bonded parameter definition by BARTENDER for molecule {molname}\n"
 
     text+="BEADS\n"
@@ -1757,10 +1688,14 @@ def bartender_input(mol, molname, atoms_in_beads, bart_info_dict):
             text+=f"{','.join(i)}\n"
     return text
 
-def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_file=None, trial=False):
-    """Returns water/octanol partitioning free energy
-    according to ALOGPS"""
+def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_file=None, trial=False): 
+    """
+    Returns water/octanol partitioning free energy according to ALOGPS
+    AutoM3 : Returns water/octanol partitioning free energy defined empiricaly from customized database
+    """
     logger.debug("Entering smi2alogps()")
+
+    ### AutoM3 ###
     if not logp_file:
         logp_file = os.path.join(os.path.dirname(__file__), 'logP_smi.dat')
     found_smi = False
@@ -1787,8 +1722,7 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
             if smiles == smi:
                 log_p = float(logp)
                 found_smi = True
-                print(f"found logp for smiles {smi} is {log_p}")
-                return log_p
+                return (log_p, "")
                 break
 
     if not found_smi:
@@ -1839,8 +1773,7 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
                 print("ALOGPS can't predict fragment: %s" % smi)
                 exit(1)
         logger.debug("logp value: %7.4f" % log_p)
-        print(f" *********** logp from ALOGPS for smiles {smi} is {log_p}")
-        return convert_log_k(log_p)
+        return (convert_log_k(log_p),"; ALOGPS defined bead")
 
 def convert_log_k(log_k):
     """Convert log_{10}K to free energy (in kJ/mol)"""
@@ -1854,7 +1787,7 @@ def mad(bead_type, delta_f, in_ring=False):
     delta_f_types = read_delta_f_types()
     return math.fabs(delta_f_types[bead_type] - delta_f)
 
-def count_letters(s):
+def count_letters(s): ### AutoM3 ###
     """ Counting atoms in SMILES code """
     count = 0
     i = 0
@@ -1869,7 +1802,7 @@ def count_letters(s):
             i += 1
     return count
 
-def find_closest_logPvalue(value, keyslist,in_ring):
+def find_closest_logPvalue(value, keyslist,in_ring): ### AutoM3 ###
     closest_key = None
     closest_diff = float('inf')
     dict=read_delta_f_types()
@@ -1882,15 +1815,13 @@ def find_closest_logPvalue(value, keyslist,in_ring):
                 closest_diff = diff
     return closest_key
 
-def determine_bead_type(delta_f, charge, hbonda, hbondd, in_ring, smi_frag):
+def determine_bead_type(delta_f, charge, hbonda, hbondd, in_ring, smi_frag): ### AutoM3 ###
     """Determine CG bead type from delta_f value, charge,
     and hbond acceptor, and donor"""
     if charge < -1 or charge > +1:
         print("Charge is too large: %s" % charge)
-        print("No adequate force-field parameter. The attempt for parametrization will continue.")
         exit(1)
     bead_type = []
-    print(f"charge {charge}, hbonda {hbonda}, hbondd {hbondd}")
     if charge != 0:
         # The compound has a +/- charge -> Q type
 
@@ -1944,5 +1875,4 @@ def determine_bead_type(delta_f, charge, hbonda, hbondd, in_ring, smi_frag):
 
             bead_type=find_closest_logPvalue(delta_f, othertypes,in_ring)
             #logger.debug("closest type: %s; error %7.4f" % (bead_type, min_error))
-    print(f"found bead type {bead_type} for smiles {str(smi_frag)} and logp {delta_f} which is {in_ring} in ring")
     return bead_type
