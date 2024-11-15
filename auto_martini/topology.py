@@ -695,47 +695,45 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                 dist = np.linalg.norm(cgbead_coords[i] - cgbead_coords[j]) * 0.1
                 if dist < 0.65:  #AutoM3 change : was  0.5
                     # Are atoms part of the same ring
-                    in_ring = False
                     for ring in ringatoms:
-                        if cgbeads[i] in ring and cgbeads[j] in ring: #AutoM3 change : was (...) and len(ring)<5:
-                            constlist.append([i, j, dist])
-                            #AutoM3 change : was in_ring = True 
-                
-                    if not in_ring: #AutoM3
-                        if dist < 0.15: # AutoM3 change : was 0.2
-                            raise NameError("Bond too short") 
+                        if cgbeads[i] in ring and cgbeads[j] in ring:
+                            constlist.append([i, j, dist])   # AutoM3 change : removed boolean 
                     
-                        # Look for a bond between an atom of i and an atom of j
-                        found_connection = False
-                        atoms_in_bead_i = []
-                        for ii in partitioning.keys():
-                            if partitioning[ii] == i:
-                                atoms_in_bead_i.append(ii)
-                        
-                        atoms_in_bead_j = []
-                        for jj in partitioning.keys():
-                            if partitioning[jj] == j:
-                                atoms_in_bead_j.append(jj)
-                        for ib in range(len(molecule.GetBonds())):
-                            abond = molecule.GetBondWithIdx(ib)
-                            if (
-                                abond.GetBeginAtomIdx() in atoms_in_bead_i
-                                and abond.GetEndAtomIdx() in atoms_in_bead_j
-                            ) or (
-                                abond.GetBeginAtomIdx() in atoms_in_bead_j
-                                and abond.GetEndAtomIdx() in atoms_in_bead_i
-                            ):
-                                found_connection = True
-                        ### AutoM3 ### 
-                        for ib in range(len(molecule.GetBonds())):
+                    if dist < 0.15: # AutoM3 change : was 0.2
+                        raise NameError("Bond too short") 
+                
+                    # Look for a bond between an atom of i and an atom of j
+                    found_connection = False
+                    atoms_in_bead_i = []
+                    for ii in partitioning.keys():
+                        if partitioning[ii] == i:
+                            atoms_in_bead_i.append(ii)
+                    
+                    atoms_in_bead_j = []
+                    for jj in partitioning.keys():
+                        if partitioning[jj] == j:
+                            atoms_in_bead_j.append(jj)
+                    for ib in range(len(molecule.GetBonds())):
+                        abond = molecule.GetBondWithIdx(ib)
+                        if (
+                            abond.GetBeginAtomIdx() in atoms_in_bead_i
+                            and abond.GetEndAtomIdx() in atoms_in_bead_j
+                        ) or (
+                            abond.GetBeginAtomIdx() in atoms_in_bead_j
+                            and abond.GetEndAtomIdx() in atoms_in_bead_i
+                        ):
+                            found_connection = True
+                    
+                    ### AutoM3 ### 
+                    for ib in range(len(molecule.GetBonds())):
                             abond = molecule.GetBondWithIdx(ib)
                             if (abond.GetBeginAtomIdx() == i and abond.GetEndAtomIdx() == j) or (abond.GetBeginAtomIdx() == j and abond.GetEndAtomIdx() == i):
                                 found_connection = True
-                        if found_connection:
-                            bondlist.append([i, j, dist])
-                        else:
-                            if cpt_ringatoms<7 and len(cgbeads)<5 and [i, j, dist] not in constlist:
-                                constlist.append([i, j, dist])
+                    if found_connection:
+                        bondlist.append([i, j, dist])
+                    else:
+                        if cpt_ringatoms<7 and len(cgbeads)<5 and [i, j, dist] not in constlist:
+                            constlist.append([i, j, dist])
         
         # AutoM3 : removed chunk
 
@@ -1060,6 +1058,7 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
     virtual_sites={}
     for ra in ringatoms: ring_atoms+=ra
 
+    #Find beads constructing rings
     bead_in_ring_coords={}
     vs_bead_coords=[]
 
@@ -1067,6 +1066,7 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
         if atom in ring_atoms and bead not in bead_in_ring_coords:
             bead_in_ring_coords[bead]=cg_bead_coords[bead]
     
+    #Count distances between each pair of beads
     distances = {}
     for bead, coord in bead_in_ring_coords.items():
         distances[bead]={}
@@ -1075,6 +1075,7 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
                 distance = ((coord[0] - other_coord[0]) ** 2 + (coord[1] - other_coord[1]) ** 2 + (coord[2] - other_coord[2]) ** 2) ** 0.5 
                 distances[bead][other_bead]=distance
 
+    #Find central bead(s) = bead which is closest to every other bead
     cumulative_distances = {}
     for bead, dist in distances.items():
         cumulative_distance = 0
@@ -1089,7 +1090,7 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
         # find VS coordinated
         for i in range(len(cg_bead_coords)):
             if i in sorted_beads[:num_vs]: 
-                vs_bead_coords.append(cg_bead_coords[i])
+                vs_bead_coords.append(cg_bead_coords[i]) #most central beads coordinates
         
         #find VS beads - central beads of the molecule 
         for i in range(num_vs):
@@ -1105,24 +1106,26 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
         
         return virtual_sites
     
-    if len(ring_atoms)<13:
-        # Find the bead with most connections
-        most_connected_bead = max(bead_bond_counts, key=bead_bond_counts.get)
+    #Find number of fused cycles = number of needed virtual sites
+    for r_nb in range(len(ringatoms)):
+        if len(ringatoms[r_nb])>6 and len(ringatoms[r_nb])<13: # one fused cycle
 
-        #finding coord of VS
-        for i in range(len(cg_bead_coords)):
-            if i==most_connected_bead: vs_bead_coords.append(cg_bead_coords[i])
-        
-        constructing_beads_dist=dict(sorted(distances[most_connected_bead].items(), key=lambda item: item[1]))
-        constructing_beads=[bead for bead in constructing_beads_dist.keys()]
-        virtual_sites[most_connected_bead]=constructing_beads[:4]
+            # Find the bead with most connections
+            most_connected_bead = max(bead_bond_counts, key=bead_bond_counts.get)
 
-    else: # coord based because not possible to trust rdkit
-        if len(ring_atoms)<16: # 3 fused cycles
+            #finding coord of VS
+            for i in range(len(cg_bead_coords)):
+                if i==most_connected_bead: vs_bead_coords.append(cg_bead_coords[i])
+            
+            constructing_beads_dist=dict(sorted(distances[most_connected_bead].items(), key=lambda item: item[1]))
+            constructing_beads=[bead for bead in constructing_beads_dist.keys()]
+            virtual_sites[most_connected_bead]=constructing_beads[:4]
+
+        if len(ringatoms[r_nb])>12 and len(ringatoms[r_nb])<16: # 2 fused cycles
             virtual_sites=find_more_vs(2, cumulative_distances,cg_bead_coords,vs_bead_coords,distances)
-        else: # more fused cycles
-            virtual_sites=find_more_vs(3, cumulative_distances,cg_bead_coords,vs_bead_coords,distances)
-
+        
+        if len(ringatoms[r_nb])>15:# 3 or more fused cycles
+            virtual_sites=find_more_vs(3, cumulative_distances,cg_bead_coords,vs_bead_coords,distances) 
 
     text = text + "\n[virtual_sitesn]\n"
     text = text + "; site funct  constructing atom indices"
