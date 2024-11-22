@@ -699,7 +699,7 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                         if cgbeads[i] in ring and cgbeads[j] in ring:
                             constlist.append([i, j, dist])   # AutoM3 change : removed boolean 
                     
-                    if dist < 0.15: # AutoM3 change : was 0.2
+                    if dist < 0.134: # AutoM3 change : was 0.2
                         raise NameError("Bond too short") 
                 
                     # Look for a bond between an atom of i and an atom of j
