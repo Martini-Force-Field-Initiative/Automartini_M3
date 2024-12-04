@@ -886,6 +886,12 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
                         for a in angle_list:
                             if i in a and j in a and k in a:
                                 new_angle = False
+                        ### AutoM3 ###
+                        if len(partitioning)>15:
+                            for a1 in range(len(angle_list)):
+                                for a2 in range(len(angle_list)):
+                                    if i in angle_list[a1] and j in angle_list[a1] and j in angle_list[a2] and k in angle_list[a2]:
+                                        new_angle = False
                         if new_angle:
                             angle_list.append([i, j, k, angle, forc_const])
 
