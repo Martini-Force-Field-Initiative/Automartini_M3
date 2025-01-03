@@ -1,9 +1,13 @@
-name: autom
+name: automartiniM3
 
 channels:
-  - default
   - conda-forge
+  - nodefaults
 
 dependencies:
   - python=3.8
+  - pip
   - rdkit
+  - pytest
+  - pip:
+      - .

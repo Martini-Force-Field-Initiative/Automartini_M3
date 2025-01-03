@@ -2,34 +2,38 @@ Auto_Martini M3
 ============
 
 ## What is Auto_Martini?
+
 A toolkit that enables automatic generation of Martini forcefields for small organic molecules, now in agreement with Martini 3 Force Field parameters. 
 
 For a detailed account of the software, see:
 
 still writing...
 
-## Developers 
+## Developers
+
 * Tristan Bereau (University of Amsterdam, Netherlands)   
 * Kiran Kanekal (Max Planck Institute for Polymer Research, Mainz, Germany)     
 * Andrew Abi-Mansour (Molecular Sciences Software Institute, Virginia Tech, Blacksburg, US)
 * Magdalena Szczuka
 
 ## Installation with conda
- For enabling automatic mapping with `Auto-Martini`, you need to create conda environment.
+
+ For enabling automatic mapping with `Auto-Martini`, you need to clone this repository and create a conda environment.
+
 ```bash
-cd auto_martini
+git clone https://github.com/Martini-Force-Field-Initiative/Automartini_M3.git
+cd Automartini_M3
 conda env create -f environment.yaml
 ```
-This will create a conda environment called `autom` which you can activate with
+
+This will create a conda environment called `automartiniM3` which you can activate with
+
 ```bash
-conda activate autom
-```
-Now use pip from the `auto_martini` src dir to run the installation:
-```bash
-pip install .
+conda activate automartiniM3
 ```
 
 ## Testing
+
 To run the test cases and validate your installation, you will need to have [pytest](https://docs.pytest.org/en/stable/getting-started.html) 
 installed. If you installed `auto_martini` with conda, then pytest should already be available in your environment.
 
