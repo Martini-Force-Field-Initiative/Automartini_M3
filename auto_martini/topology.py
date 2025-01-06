@@ -385,6 +385,9 @@ def extract_features(molecule):
     return features
 
 def cyclic_smi_conversion(smi): # AutoM3 function
+    """ Function for converting cyclic atoms in smiles from upper case to lower for them being accepted by rdkit and not raise error : 
+    rdkit.Chem.rdchem.AtomKekulizeException: non-ring atom 0 marked aromatic
+    """
     smi = smi.replace("ccc","CC=C")
     smi = smi.replace("cc","C=C")
     smi = smi.replace("c","C")
@@ -497,13 +500,14 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
 
     # fragment smi: [H]N([H])c1nc(N([H])[H])n([H])n1
 
-    num_atoms = molecule.GetConformer().GetNumAtoms()
+    # Identify atoms involved in same ring as cg_bead (only one ring)
+    atoms_in_ring = []
+    for ring in ringatoms:
+        if cgbeads[cg_bead] in ring:
+            atoms_in_ring = ring[:]  # CHANGED
+            break
 
-    #AutoM3 change : number of each atom in bead
-    atoms_in_smi=" ; atoms: "
-    for at,bd in partitioning.items():
-        if bd ==cg_bead:
-            atoms_in_smi+=molecule.GetAtomWithIdx(at).GetSymbol()+str(at)+", "
+    num_atoms = molecule.GetConformer().GetNumAtoms()
 
     # First delete all hydrogens
     for i in range(num_atoms):
@@ -516,12 +520,6 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
                     == submol.GetConformer().GetAtomPosition(j)[0]
                 ):
                     frag.RemoveAtom(j)
-    # Identify atoms involved in same ring as cg_bead (only one ring)
-    atoms_in_ring = []
-    for ring in ringatoms:
-        if cgbeads[cg_bead] in ring:
-            atoms_in_ring = ring[:]  # CHANGED
-            break
     # Then heavy atoms that aren't part of the CG bead #(except those
     # involved in the same ring).
     for i in partitioning.keys():
@@ -546,14 +544,29 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
     smi = Chem.MolToSmiles(Chem.rdmolops.AddHs(frag.GetMol(), addCoords=True))
 
     ### AutoM3 ###
+    smi_rdkit=smi
+    atoms_in_smi=" ; atoms: "
     converted_smi=False
-    if "c" or "n" or "s" in smi:
-        converted_smi=True
-        real_smi=smi 
-        smi = cyclic_smi_conversion(smi)
+    real_smi = smi
+    i = -1
+    for at, bd in partitioning.items():
+        if bd == cg_bead:
+            atoms_in_smi += molecule.GetAtomWithIdx(at).GetSymbol() + str(at) + ", "
+            i += 1
+            if at in atoms_in_ring:
+                converted_smi = True
+                temp_smi = list(real_smi)
+
+                for j, letter in enumerate(smi):
+                    if i == j:  # Modify only the specific atom in the ring
+                        temp_smi[j] = letter.lower()  # Change the letter at this position
+
+                real_smi = ''.join(temp_smi)
+                if "c" in smi or "n" in smi or "s" in smi:
+                    smi = cyclic_smi_conversion(smi)
+
     # fragment smi: Nc1ncnn1 ---------> FAILURE! Need to fix this Andrew! For now, just a hackish soln:
     # smi = smi.lower() if smi.islower() else smi.upper()
-
     return smi, wc_log_p, chg, atoms_in_smi,converted_smi,real_smi
 
 def get_mass(smi): # AutoM3
@@ -1732,7 +1745,7 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
                 log_p = float(logp)
                 found_smi = True
                 return (log_p, "")
-                break
+                #break
 
     if not found_smi:
         if converted_smi:
