@@ -497,7 +497,6 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
     """Substructure to smiles conversion; also output Wildman-Crippen log_p;
     and charge of group."""
     frag = rdchem.EditableMol(molecule)
-
     # fragment smi: [H]N([H])c1nc(N([H])[H])n([H])n1
 
     # Identify atoms involved in same ring as cg_bead (only one ring)
@@ -542,28 +541,22 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
             chg += molecule.GetAtomWithIdx(i).GetFormalCharge()
 
     smi = Chem.MolToSmiles(Chem.rdmolops.AddHs(frag.GetMol(), addCoords=True))
-
+    
     ### AutoM3 ###
-    smi_rdkit=smi
+    
     atoms_in_smi=" ; atoms: "
     converted_smi=False
-    real_smi = smi
-    i = -1
+    real_smi=None
+
     for at, bd in partitioning.items():
         if bd == cg_bead:
-            atoms_in_smi += molecule.GetAtomWithIdx(at).GetSymbol() + str(at) + ", "
-            i += 1
-            if at in atoms_in_ring:
-                converted_smi = True
-                temp_smi = list(real_smi)
-
-                for j, letter in enumerate(smi):
-                    if i == j:  # Modify only the specific atom in the ring
-                        temp_smi[j] = letter.lower()  # Change the letter at this position
-
-                real_smi = ''.join(temp_smi)
-                if "c" in smi or "n" in smi or "s" in smi:
-                    smi = cyclic_smi_conversion(smi)
+            at_symbol = molecule.GetAtomWithIdx(at).GetSymbol()
+            atoms_in_smi += at_symbol + str(at) + ", "
+     
+    if "c" in smi or "n" in smi or "s" in smi:
+        converted_smi = True
+        real_smi=smi
+        smi = cyclic_smi_conversion(smi)
 
     # fragment smi: Nc1ncnn1 ---------> FAILURE! Need to fix this Andrew! For now, just a hackish soln:
     # smi = smi.lower() if smi.islower() else smi.upper()
@@ -1735,7 +1728,6 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
                         logP_data[key] = float(val)
             except Exception as e:
                 print(f"An error occurred while reading the logP file")
-                #print("")
         else:
             print(f"Invalid file name: {logp_file}")
         
