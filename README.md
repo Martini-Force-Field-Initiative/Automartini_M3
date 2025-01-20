@@ -58,7 +58,7 @@ To display the usage-information (help), either supply -h, --help, or nothing to
  
 ```
 usage: auto_martiniM3 [-h] [--mode {run,test}] [--sdf SDF | --smi SMI]
-                    [--mol MOLNAME] [--aa AA] [-v] [--fpred] [--dih True(default) / False]
+                    [--mol MOLNAME] [--aa AA] [-v] [--fpred] [--simple (False)] [--bartender (False)]
 
 Generates Martini 3 force field for atomistic structures of small organic molecules
 
