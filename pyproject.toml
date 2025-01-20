@@ -36,7 +36,7 @@ include = [
   {path = "auto_martiniM3/*.so", format = "wheel"},
 ]
 description = "A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules"
-authors = ["Tristan Bereau", "Andrew Abi-Mansour", "Magdalena Szczuka"]
+authors = ["Magdalena Szczuka", "Tristan Bereau", "Andrew Abi-Mansour"]
 classifiers = [
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",

@@ -13,11 +13,10 @@ This is the::
 A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules
 
 Developers::
-
+        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
         Tristan BEREAU (bereau at mpip-mainz.mpg.de)
         Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
         Andrew Abi-Mansour (andrew.gaam at gmail.com)
-        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
 
 AUTO_MARTINI M3 is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
@@ -48,8 +47,8 @@ parser = argparse.ArgumentParser(
     prog="auto_martiniM3",
     description="Generates Martini 3 force field for atomistic structures of small organic molecules",
     formatter_class=argparse.RawDescriptionHelpFormatter,
-    epilog="""Developers:\n===========\nTristan Bereau (bereau [at] mpip-mainz.mpg.de)\nKiran Kanekal (kanekal [at] mpip-mainz.mpg.de)
-Andrew Abi-Mansour (andrew.gaam [at] gmail.com)\nMagdalena Szczuka (magdalena.szczuka [at] univ-tlse3.fr)""",
+    epilog="""Developers:\n===========\nMagdalena Szczuka (magdalena.szczuka [at] univ-tlse3.fr)\nTristan Bereau (bereau [at] mpip-mainz.mpg.de)\nKiran Kanekal (kanekal [at] mpip-mainz.mpg.de)
+Andrew Abi-Mansour (andrew.gaam [at] gmail.com)""",
 )
 parser.add_argument(
     "--mode", type=str, choices=["run"], default="run", help="mode: run (compute FF)"

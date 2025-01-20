@@ -10,11 +10,14 @@ For a detailed account of the software, see:
 still writing...
 
 ## Developers
-
+* Magdalena Szczuka (University Toulouse 3, France)
 * Tristan Bereau (University of Amsterdam, Netherlands)   
 * Kiran Kanekal (Max Planck Institute for Polymer Research, Mainz, Germany)     
 * Andrew Abi-Mansour (Molecular Sciences Software Institute, Virginia Tech, Blacksburg, US)
-* Magdalena Szczuka (University Toulouse 3 - Paul Sabatier, France)
+
+## Supervisors
+* Matthieu Chavent (Centre de Biologie Intégrative (CBI), University Toulouse 3, CNRS, France)
+* Pierre Poulain (Université Paris Cité, France)
 
 ## Installation with conda
 
@@ -72,10 +75,10 @@ optional arguments:
   --bartender        (False), <True> for generating bartender (10.1021/acs.jctc.4c00275) input file 
 Developers:
 ===========
+Magdalena Szczuka (magdalena.szczuka [at] univ-tlse3.fr)
 Tristan Bereau (bereau [at] mpip-mainz.mpg.de)
 Kiran Kanekal (kanekal [at] mpip-mainz.mpg.de)
 Andrew Abi-Mansour (andrew.gaam [at] gmail.com)
-Magdalena Szczuka (magdalena.szczuka [at] univ-tlse3.fr)
 ```
 
 ## Example
@@ -92,7 +95,7 @@ In case no problem arises, it will output the gromacs ASP.itp file:
 ```
 ; GENERATED WITH Auto_Martini M3FF for ASP
 ; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour
-; updated to Martini 3 force field by Magdalena Szczuka, supervised by Matthieu Chavent 
+; updated to Martini 3 force field by Magdalena Szczuka, supervised by Matthieu Chavent and Pierre Poulain 
 ; SMILE code : CC(=O)OC1=CC=CC=C1C(=O)O
 
 

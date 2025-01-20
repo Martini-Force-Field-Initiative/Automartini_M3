@@ -13,11 +13,10 @@ This is the::
 A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules
 
 Developers::
-
+        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
         Tristan BEREAU (bereau at mpip-mainz.mpg.de)
         Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
         Andrew Abi-Mansour (andrew.gaam at gmail.com)
-        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
 
 AUTO_MARTINI M3 is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
@@ -135,7 +134,7 @@ def print_header(molname, mol_smi):
     
     info = (
         "; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour\n"
-        + "; updated to Martini 3 force field by Magdalena Szczuka, supervised by Matthieu Chavent \n"
+        + "; updated to Martini 3 force field by Magdalena Szczuka, supervised by Matthieu Chavent and Pierre Poulain \n"
         + "; SMILE code : "+mol_smi +"\n\n"
         + "\n[moleculetype]\n"
         + "; molname       nrexcl\n"
