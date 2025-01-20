@@ -1,26 +1,25 @@
 """
 Created on March 17, 2019 by Andrew Abi-Mansour
-
-Updated on November 8, 2024 by Magdalena Szczuka
+Updated to Martini 3 force field on January 31, 2025 by Magdalena Szczuka
 
 This is the::
+    _   _   _ _____ ___     __  __    _    ____ _____ ___ _   _ ___   __  __ _____
+   / \ | | | |_   _/ _ \   |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|  |  \/  |___ /  
+  / _ \| | | | | || | | |  | |\/| | / _ \ | |_) || |  | ||  \| || |   | |\/| | |_ \  
+ / ___ \ |_| | | || |_| |  | |  | |/ ___ \|  _ < | |  | || |\  || |   | |  | |___) | 
+/_/  _\_\___/  |_| \___/   |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|  |_|  |_|____/    
+                                                
 
-	     _   _   _ _____ ___    __  __    _    ____ _____ ___ _   _ ___ 
-	    / \ | | | |_   _/ _ \  |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|
-	   / _ \| | | | | || | | | | |\/| | / _ \ | |_) || |  | ||  \| || | 
-	  / ___ \ |_| | | || |_| | | |  | |/ ___ \|  _ < | |  | || |\  || | 
-	 /_/   \_\___/  |_| \___/  |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|                                                            
-                                                                 
-Tool for automatic MARTINI mapping and parametrization of small organic molecules
+A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules
 
 Developers::
 
-	Tristan BEREAU (bereau at mpip-mainz.mpg.de)
-	Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
-	Andrew Abi-Mansour (andrew.gaam at gmail.com)
-    Magdalena Szczuka (magdalena.szczuka@univ-tlse3.fr)
+        Tristan BEREAU (bereau at mpip-mainz.mpg.de)
+        Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
+        Andrew Abi-Mansour (andrew.gaam at gmail.com)
+        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
 
-AUTO_MARTINI is open-source, distributed under the terms of the GNU Public
+AUTO_MARTINI M3 is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
 be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
 of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. You should have
@@ -46,8 +45,8 @@ def checkArgs(args):
         parser.error("run requires --mol")
 
 parser = argparse.ArgumentParser(
-    prog="auto_martini",
-    description="Generates Martini force field for atomistic structures of small organic molecules",
+    prog="auto_martiniM3",
+    description="Generates Martini 3 force field for atomistic structures of small organic molecules",
     formatter_class=argparse.RawDescriptionHelpFormatter,
     epilog="""Developers:\n===========\nTristan Bereau (bereau [at] mpip-mainz.mpg.de)\nKiran Kanekal (kanekal [at] mpip-mainz.mpg.de)
 Andrew Abi-Mansour (andrew.gaam [at] gmail.com)\nMagdalena Szczuka (magdalena.szczuka [at] univ-tlse3.fr)""",
@@ -97,14 +96,14 @@ else:
     level = logging.WARNING
 
 logging.basicConfig(
-    filename="auto_martini.log",
+    filename="auto_martiniM3.log",
     format="%(asctime)s [%(levelname)s](%(name)s:%(funcName)s:%(lineno)d): %(message)s",
     level=level,
 )
 
 logger = logging.getLogger(__name__)
 
-logger.info("Running auto_martini v{}".format(__version__))
+logger.info("Running auto_martiniM3 v{}".format(__version__))
 
 # Generate molecule's structure from SDF or SMILES
 if args.sdf:

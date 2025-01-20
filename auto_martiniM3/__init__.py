@@ -1,5 +1,5 @@
 """
-Created on August 7, 2021 by Andrew Abi-Mansour
+Created on March 17, 2019 by Andrew Abi-Mansour
 Updated to Martini 3 force field on January 31, 2025 by Magdalena Szczuka
 
 This is the::
@@ -28,12 +28,7 @@ If not, see http://www.gnu.org/licenses . See also top-level README
 and LICENSE files.
 """
 
-import numpy
-from Cython.Build import cythonize
+from . import solver, topology
+from ._version import __version__
 
-
-def build(setup_kwargs):
-    setup_kwargs.update(
-        ext_modules=cythonize(["auto_martiniM3/optimization.pyx"]),
-        include_dirs=numpy.get_include(),
-    )
+__all__ = ["solver", "topology", "__version__"]

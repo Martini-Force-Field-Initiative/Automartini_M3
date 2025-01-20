@@ -1,53 +1,38 @@
 """
 Created on March 13, 2019 by Andrew Abi-Mansour
-
-Updated on November 8, 2024 by Magdalena Szczuka
+Updated to Martini 3 force field on January 31, 2025 by Magdalena Szczuka
 
 This is the::
+    _   _   _ _____ ___     __  __    _    ____ _____ ___ _   _ ___   __  __ _____
+   / \ | | | |_   _/ _ \   |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|  |  \/  |___ /  
+  / _ \| | | | | || | | |  | |\/| | / _ \ | |_) || |  | ||  \| || |   | |\/| | |_ \  
+ / ___ \ |_| | | || |_| |  | |  | |/ ___ \|  _ < | |  | || |\  || |   | |  | |___) | 
+/_/  _\_\___/  |_| \___/   |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|  |_|  |_|____/    
+                                                
 
-	     _   _   _ _____ ___    __  __    _    ____ _____ ___ _   _ ___ 
-	    / \ | | | |_   _/ _ \  |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|
-	   / _ \| | | | | || | | | | |\/| | / _ \ | |_) || |  | ||  \| || | 
-	  / ___ \ |_| | | || |_| | | |  | |/ ___ \|  _ < | |  | || |\  || | 
-	 /_/   \_\___/  |_| \___/  |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|                                                            
-                                                                 
-Tool for automatic MARTINI mapping and parametrization of small organic molecules
+A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules
 
 Developers::
 
-	Tristan BEREAU (bereau at mpip-mainz.mpg.de)
-	Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
-	Andrew Abi-Mansour (andrew.gaam at gmail.com)
-    Magdalena Szczuka (magdalena.szczuka@univ-tlse3.fr)
+        Tristan BEREAU (bereau at mpip-mainz.mpg.de)
+        Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
+        Andrew Abi-Mansour (andrew.gaam at gmail.com)
+        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
 
-AUTO_MARTINI is open-source, distributed under the terms of the GNU Public
+AUTO_MARTINI M3 is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
 be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
 of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. You should have
 received a copy of the GNU General Public License along with PyGran.
 If not, see http://www.gnu.org/licenses . See also top-level README
 and LICENSE files.
-"""
+""" 
 
 from sys import exit
 
-from auto_martini._version import __version__
+from auto_martiniM3._version import __version__
 
 from .common import *
-import numpy as np
-import random
-import re
-import math
-import numpy as np
-import os
-
-from rdkit.Chem import AllChem
-from rdkit import Chem
-from rdkit.Chem import Draw
-from rdkit.Chem.Draw import rdMolDraw2D
-from rdkit.Chem import rdCoordGen
-from rdkit import Geometry
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -144,124 +129,14 @@ def gen_molecule_sdf(sdf):
             exit(1)
     return molecule
 
-def mol_to_ascii(mol):
-    """
-    AutoM3 : script for drawing simple molecule figure in itp file,
-    adapted from rdkit_print_mol_ascii.ipynb by Vincent F. Scalfani (git: vfscalfani)
-    """
-    #1. Draw mol with rdCoordGen
-    rdCoordGen.AddCoords(mol)
-    drawer = rdMolDraw2D.MolDraw2DCairo(300,300)
-    drawer.drawOptions().fixedBondLength = 40
-    drawer.DrawMolecule(mol)
-    drawer.FinishDrawing()
-    ascii_img=""
-    #2. Get atom x,y coordinates
-    # adapated from: https://gist.github.com/greglandrum/0c8b80825826392a6519af7519862baf
-    atom_index = []
-    atom_symbols = []
-    atom_xpos = []
-    atom_ypos = []
-    conf = mol.GetConformer()
-    for i in range(mol.GetNumAtoms()):
-        atom_index.append(i)
-        at_sym=str(mol.GetAtomWithIdx(i).GetSymbol())+str(i)
-        atom_symbols.append(at_sym)
-        pos_A = conf.GetAtomPosition(i)
-        pos_point = Geometry.Point2D(pos_A.x,pos_A.y)
-        dpos = drawer.GetDrawCoords(pos_point)
-        atom_xpos.append(dpos.x)
-        atom_ypos.append(dpos.y)
-    #3. Resize and shift coordinates
-    atom_coords = list(zip(atom_xpos, atom_ypos))
-    # A scale between 1/12 and 1/20 seems to work okay without distorting printing aspect ratio
-    scale_atom_coords = [(p[0]/14, p[1]/14) for p in atom_coords]
-    round_atom_coords = [(round(p[0]), round(p[1])) for p in scale_atom_coords]
-    # Get min and max for x,y
-    xmin = min(c[0] for c in round_atom_coords)
-    xmax = max(c[0] for c in round_atom_coords)
-    ymin = min(c[1] for c in round_atom_coords)
-    ymax = max(c[1] for c in round_atom_coords)
-    # figure out what to substract to shift coordinates by a min
-    if xmin < ymin:
-        xymin = xmin
-    else:
-        xymin = ymin
-    # shift by xymin to move mol closer to origin
-    norm_atom_coords = [(p[0] - xymin, p[1] - xymin) for p in round_atom_coords]
-    #4. Get Bond connection information for drawing bonds
-    atom_begin = []
-    atom_end = []
-    bond_type = []
-    for bond in mol.GetBonds():
-        atom_begin.append(bond.GetBeginAtomIdx())
-        atom_end.append(bond.GetEndAtomIdx())
-        bond_type.append(bond.GetBondTypeAsDouble()) # this could be used to define single, double, arom with symbols
-    #5. Get coordinates of middle of bond for plotting
-    begin_connection_xpos = []
-    begin_connection_ypos = []
-    for i in atom_begin:
-        begin_connection_xpos.append(norm_atom_coords[i][0])
-        begin_connection_ypos.append(norm_atom_coords[i][1])
-    end_connection_xpos = []
-    end_connection_ypos = []
-    for i in atom_end:
-        end_connection_xpos.append(norm_atom_coords[i][0])
-        end_connection_ypos.append(norm_atom_coords[i][1])
-    midx_bond = []
-    for x1,x2 in zip(begin_connection_xpos, end_connection_xpos):
-        middle = (x1+x2)/2
-        midx_bond.append(middle)
-    midy_bond = []
-    for y1,y2 in zip(begin_connection_ypos, end_connection_ypos):
-        middle = (y1+y2)/2
-        midy_bond.append(middle)
-    # xy coordinates of center of bonds (*) to plot
-    bond_center_points = list(zip(midx_bond,midy_bond))
-    #6. Setup a max plotting print range based on coordinates
-    if xmax > ymax:
-        xymax = xmax
-    else:
-        xymax = ymax
-    # this just gets the steps for x.y coordinates in increments of 0.5 for the print grid
-    start = 0
-    stop = round(xymax+1)
-    samples = round((stop*2)+1)
-    print_range = np.linspace(start,stop,samples)
-    #7. Print the molecule!
-    # Adapted from: https://stackoverflow.com/questions/16240358/ascii-graph-in-python // https://creativecommons.org/licenses/by-sa/3.0/
-    bond_symbol = '*'
-    fill_symbol = ' '
-    for y in print_range:
-        chars = []
-        for x in print_range:
-            if (x,y) in norm_atom_coords:
-                index_value = norm_atom_coords.index((x,y))
-                chars.append(atom_symbols[index_value])
-            elif (x,y) in bond_center_points:
-                chars.append(bond_symbol)
-            else:
-                chars.append(fill_symbol)
-        line=(' '.join(chars))
-        if line.strip():
-            ascii_img +=";  "+ line + '\n'
-    return ascii_img
-
 def print_header(molname, mol_smi):
     """Print topology header"""
     text = "; GENERATED WITH Auto_Martini M3FF for {}\n".format(molname)
     
-    ### AutoM3 script for drawing a molecule in itp output file ###
-    ascii_art = ""
-    mol = Chem.MolFromSmiles(mol_smi)
-    if mol is not None:
-        ascii_art = mol_to_ascii(mol)
-    
     info = (
         "; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour\n"
-        + "; updated to Martini3 by Magdalena Szczuka, reviewed by Matthieu Chavent \n"
+        + "; updated to Martini 3 force field by Magdalena Szczuka, supervised by Matthieu Chavent \n"
         + "; SMILE code : "+mol_smi +"\n\n"
-        + ascii_art
         + "\n[moleculetype]\n"
         + "; molname       nrexcl\n"
         + "  {:5s}         2\n\n".format(molname)
@@ -408,7 +283,8 @@ def rearrange_until_match(input_string): # AutoM3 function
     return result_string
 
 def read_params(val, size):  # AutoM3 function 
-    """Returns force of the closest to given parameter"""
+    """Returns the closest force value to given parameter, 
+    based on state-of-the-art parametrizations avaliablie in MAD (https://mad.ibcp.fr) """
     bonds = {'S-S': {0.36: 5000.0, 0.378: 5000.0, 0.321: 25000.0, 0.331: 5000.0, 0.3: 5000.0, 0.37: 5000.0, 0.281: 25000.0,
                      0.314: 25000.0, 0.32: 7500.0, 0.38: 5000.0, 0.33: 17000.0, 0.405: 5000.0, 0.395: 5000.0, 0.39: 5000.0,
                      0.385: 5000.0, 0.35: 5000.0, 0.375: 3500.0, 0.376: 7000.0, 0.34: 7000.0},

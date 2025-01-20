@@ -23,20 +23,20 @@ build-backend = "poetry.core.masonry.api"
 # Project package metadata ----------
 
 [tool.poetry]
-name = "auto_martini"
+name = "auto_martiniM3"
 version = "0.0.0"
 packages = [
-  { include = "auto_martini" }
+  { include = "auto_martiniM3" }
 ]
 exclude = [
   "*/tests/"
 ]
 include = [
-  {path = "auto_martini/optimization.pyx", format = "wheel"},
-  {path = "auto_martini/*.so", format = "wheel"},
+  {path = "auto_martiniM3/optimization.pyx", format = "wheel"},
+  {path = "auto_martiniM3/*.so", format = "wheel"},
 ]
-description = "A tool for automatic MARTINI mapping and parametrization of small organic molecules"
-authors = ["Tristan Bereau", "Andrew Abi-Mansour"]
+description = "A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules"
+authors = ["Tristan Bereau", "Andrew Abi-Mansour", "Magdalena Szczuka"]
 classifiers = [
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
@@ -44,9 +44,9 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 readme = "README.md"
-homepage = "https://github.com/tbereau/auto_martini"
-repository = "https://github.com/tbereau/auto_martini"
-documentation = "https://github.com/tbereau/auto_martini"
+homepage = "https://github.com/Martini-Force-Field-Initiative/Automartini_M3"
+repository = "https://github.com/Martini-Force-Field-Initiative/Automartini_M3"
+documentation = "https://github.com/Martini-Force-Field-Initiative/Automartini_M3"
 build = "build_ext.py"
 
 [tool.poetry-dynamic-versioning]
@@ -107,7 +107,7 @@ line-length = 99
 # Coverage settings
 [tool.coverage.run]
 branch = true
-source = ["auto_martini"]
+source = ["auto_martiniM3"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -118,7 +118,7 @@ exclude_lines = [
     "pytest.mark.skip"
 ]
 omit = [
-    "auto_martini/tests/*"
+    "auto_martiniM3/tests/*"
 ]
 show_missing = true
 fail_under = 0 # coverage not working
@@ -130,4 +130,4 @@ profile = "black"
 # Pytest options
 [tool.pytest.ini_options]
 xfail_strict = true
-testpaths = "auto_martini/tests"
+testpaths = "auto_martiniM3/tests"

@@ -1,33 +1,32 @@
 """
 Created on March 13, 2019 by Andrew Abi-Mansour
-
-Updated on November 8, 2024 by Magdalena Szczuka
+Updated to Martini 3 force field on January 31, 2025 by Magdalena Szczuka
 
 This is the::
+    _   _   _ _____ ___     __  __    _    ____ _____ ___ _   _ ___   __  __ _____
+   / \ | | | |_   _/ _ \   |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|  |  \/  |___ /  
+  / _ \| | | | | || | | |  | |\/| | / _ \ | |_) || |  | ||  \| || |   | |\/| | |_ \  
+ / ___ \ |_| | | || |_| |  | |  | |/ ___ \|  _ < | |  | || |\  || |   | |  | |___) | 
+/_/  _\_\___/  |_| \___/   |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|  |_|  |_|____/    
+                                                
 
-	     _   _   _ _____ ___    __  __    _    ____ _____ ___ _   _ ___ 
-	    / \ | | | |_   _/ _ \  |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|
-	   / _ \| | | | | || | | | | |\/| | / _ \ | |_) || |  | ||  \| || | 
-	  / ___ \ |_| | | || |_| | | |  | |/ ___ \|  _ < | |  | || |\  || | 
-	 /_/   \_\___/  |_| \___/  |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|                                                            
-                                                                 
-Tool for automatic MARTINI mapping and parametrization of small organic molecules
+A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules
 
 Developers::
 
-	Tristan BEREAU (bereau at mpip-mainz.mpg.de)
-	Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
-	Andrew Abi-Mansour (andrew.gaam at gmail.com)
-    Magdalena Szczuka (magdalena.szczuka@univ-tlse3.fr)
+        Tristan BEREAU (bereau at mpip-mainz.mpg.de)
+        Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
+        Andrew Abi-Mansour (andrew.gaam at gmail.com)
+        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
 
-AUTO_MARTINI is open-source, distributed under the terms of the GNU Public
+AUTO_MARTINI M3 is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
 be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
 of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. You should have
 received a copy of the GNU General Public License along with PyGran.
 If not, see http://www.gnu.org/licenses . See also top-level README
 and LICENSE files.
-"""
+""" 
 
 from . import optimization, output, topology
 from .common import *
@@ -109,7 +108,7 @@ class Cg_molecule:
         molecule = Chem.Mol(molecule)
         AllChem.EmbedMolecule(molecule)
         AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
-        AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) #was 1.12
+        AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) 
 
         feats = topology.extract_features(molecule)
 

@@ -1,5 +1,5 @@
 """
-Created on August 7, 2021 by Andrew Abi-Mansour
+Created on March 14, 2019 by Andrew Abi-Mansour
 Updated to Martini 3 force field on January 31, 2025 by Magdalena Szczuka
 
 This is the::
@@ -28,12 +28,34 @@ If not, see http://www.gnu.org/licenses . See also top-level README
 and LICENSE files.
 """
 
-import numpy
-from Cython.Build import cythonize
+from __future__ import print_function
+
+import itertools
+import logging
+import math
+import os
+import sys
+from collections import Counter, defaultdict, namedtuple
+from itertools import chain
+from operator import itemgetter
 
 
-def build(setup_kwargs):
-    setup_kwargs.update(
-        ext_modules=cythonize(["auto_martiniM3/optimization.pyx"]),
-        include_dirs=numpy.get_include(),
-    )
+import random
+import re
+
+import numpy as np
+import requests
+import six
+from bs4 import BeautifulSoup
+from rdkit import Chem, RDConfig
+from rdkit.Chem import (
+    AllChem,
+    ChemicalFeatures,
+    rdchem,
+    rdMolDescriptors,
+    rdmolfiles,
+    rdmolops,
+    rdMolTransforms,
+)
+
+from .sanifix4 import AdjustAromaticNs

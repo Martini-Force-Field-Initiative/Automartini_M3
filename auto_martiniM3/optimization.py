@@ -1,26 +1,25 @@
 """
 Created on March 13, 2019 by Andrew Abi-Mansour
-
-Updated on November 8, 2024 by Magdalena Szczuka
+Updated to Martini 3 force field on January 31, 2025 by Magdalena Szczuka
 
 This is the::
+    _   _   _ _____ ___     __  __    _    ____ _____ ___ _   _ ___   __  __ _____
+   / \ | | | |_   _/ _ \   |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|  |  \/  |___ /  
+  / _ \| | | | | || | | |  | |\/| | / _ \ | |_) || |  | ||  \| || |   | |\/| | |_ \  
+ / ___ \ |_| | | || |_| |  | |  | |/ ___ \|  _ < | |  | || |\  || |   | |  | |___) | 
+/_/  _\_\___/  |_| \___/   |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|  |_|  |_|____/    
+                                                
 
-	     _   _   _ _____ ___    __  __    _    ____ _____ ___ _   _ ___ 
-	    / \ | | | |_   _/ _ \  |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|
-	   / _ \| | | | | || | | | | |\/| | / _ \ | |_) || |  | ||  \| || | 
-	  / ___ \ |_| | | || |_| | | |  | |/ ___ \|  _ < | |  | || |\  || | 
-	 /_/   \_\___/  |_| \___/  |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|                                                            
-                                                                 
-Tool for automatic MARTINI mapping and parametrization of small organic molecules
+A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules
 
 Developers::
 
-	Tristan BEREAU (bereau at mpip-mainz.mpg.de)
-	Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
-	Andrew Abi-Mansour (andrew.gaam at gmail.com)
-    Magdalena Szczuka (magdalena.szczuka@univ-tlse3.fr)
+        Tristan BEREAU (bereau at mpip-mainz.mpg.de)
+        Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
+        Andrew Abi-Mansour (andrew.gaam at gmail.com)
+        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
 
-AUTO_MARTINI is open-source, distributed under the terms of the GNU Public
+AUTO_MARTINI M3 is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
 be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
 of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. You should have
@@ -31,8 +30,6 @@ and LICENSE files.
 
 from sys import exit
 
-import numpy as np
-from collections import namedtuple
 from .common import *
 from . import topology # AutoM3 change
 
@@ -304,59 +301,6 @@ def identify_functional_groups(mol): # AutoM3 change
         print(f'  Group Type (SMILES): {fg.type}')
         print(f'  Group Type Atom Indices: {fg.type_atomIds}')"""
     
-    """
-    USE:
-    m = Chem.MolFromSmiles(smiles)
-    fgs = identify_functional_groups(m)
-    print('%2d: %d fgs' % (ix + 1, len(fgs)), fgs)
-    """
-    return ifgs
-
-def identify_functional_groups_original(mol):
-    # atoms connected by non-aromatic double or triple bond to any heteroatom
-    # c=O should not match (see fig1, box 15).  I think using A instead of * should sort that out?
-    PATT_DOUBLE_TRIPLE = Chem.MolFromSmarts('A=,#[!#6]')
-    # atoms in non aromatic carbon-carbon double or triple bonds
-    PATT_CC_DOUBLE_TRIPLE = Chem.MolFromSmarts('C=,#C')
-    # acetal carbons, i.e. sp3 carbons connected to tow or more oxygens, nitrogens or sulfurs; these O, N or S atoms must have only single bonds
-    PATT_ACETAL = Chem.MolFromSmarts('[CX4](-[O,N,S])-[O,N,S]')
-    # all atoms in oxirane, aziridine and thiirane rings
-    PATT_OXIRANE_ETC = Chem.MolFromSmarts('[O,N,S]1CC1')
-
-    PATT_TUPLE = (PATT_DOUBLE_TRIPLE, PATT_CC_DOUBLE_TRIPLE, PATT_ACETAL, PATT_OXIRANE_ETC)
-
-    marked = set()
-    #mark all heteroatoms in a molecule, including halogens
-    for atom in mol.GetAtoms():
-        if atom.GetAtomicNum() not in (6, 1):  # would we ever have hydrogen?
-            marked.add(atom.GetIdx())
-
-    #mark the four specific types of carbon atom
-    for patt in PATT_TUPLE:
-        for path in mol.GetSubstructMatches(patt):
-            for atomindex in path:
-                marked.add(atomindex)
-
-    #merge all connected marked atoms to a single FG
-    groups = []
-    while marked:
-        grp = set([marked.pop()])
-        merge(mol, marked, grp)
-        groups.append(grp)
-
-
-    #extract also connected unmarked carbon atoms
-    ifg = namedtuple('IFG', ['atomIds', 'atoms', 'type'])
-    ifgs = []
-    for g in groups:
-        uca = set()
-        for atomidx in g:
-            for n in mol.GetAtomWithIdx(atomidx).GetNeighbors():
-                if n.GetAtomicNum() == 6:
-                    uca.add(n.GetIdx())
-        ifgs.append(
-        ifg(atomIds=tuple(list(g)), atoms=Chem.MolFragmentToSmiles(mol, g, canonical=True),
-            type=Chem.MolFragmentToSmiles(mol, g.union(uca), canonical=True)))
     """
     USE:
     m = Chem.MolFromSmiles(smiles)

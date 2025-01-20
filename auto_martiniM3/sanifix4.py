@@ -7,23 +7,26 @@ The code in this file belongs to James Davidson and is discussed here::
 	http://www.mail-archive.com/rdkit-discuss@lists.sourceforge.net/msg01162.html
 	http://www.mail-archive.com/rdkit-discuss@lists.sourceforge.net/msg01900.html  
 
-This is the::
+Updated to Martini 3 force field on January 31, 2025 by Magdalena Szczuka
 
-	     _   _   _ _____ ___    __  __    _    ____ _____ ___ _   _ ___ 
-	    / \ | | | |_   _/ _ \  |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|
-	   / _ \| | | | | || | | | | |\/| | / _ \ | |_) || |  | ||  \| || | 
-	  / ___ \ |_| | | || |_| | | |  | |/ ___ \|  _ < | |  | || |\  || | 
-	 /_/   \_\___/  |_| \___/  |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|                                                            
-                                                                 
-Tool for automatic MARTINI mapping and parametrization of small organic molecules
+This is the::
+    _   _   _ _____ ___     __  __    _    ____ _____ ___ _   _ ___   __  __ _____
+   / \ | | | |_   _/ _ \   |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _|  |  \/  |___ /  
+  / _ \| | | | | || | | |  | |\/| | / _ \ | |_) || |  | ||  \| || |   | |\/| | |_ \  
+ / ___ \ |_| | | || |_| |  | |  | |/ ___ \|  _ < | |  | || |\  || |   | |  | |___) | 
+/_/  _\_\___/  |_| \___/   |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___|  |_|  |_|____/    
+                                                
+
+A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules
 
 Developers::
 
-	Tristan BEREAU (bereau at mpip-mainz.mpg.de)
-	Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
-	Andrew Abi-Mansour (andrew.gaam at gmail.com)
+        Tristan BEREAU (bereau at mpip-mainz.mpg.de)
+        Kiran Kanekal (kanekal at mpip-mainz.mpg.de)
+        Andrew Abi-Mansour (andrew.gaam at gmail.com)
+        Magdalena Szczuka (magdalena.szczuka at univ-tlse3.fr)
 
-AUTO_MARTINI is open-source, distributed under the terms of the GNU Public
+AUTO_MARTINI M3 is open-source, distributed under the terms of the GNU Public
 License, version 2 or later. It is distributed in the hope that it will
 be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
 of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. You should have
