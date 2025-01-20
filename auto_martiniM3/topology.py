@@ -1639,7 +1639,7 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
             print("Error with BeautifulSoup prettify")
             exit(1)
         found_mol_1 = False
-        log_p = ""
+        log_p = None
         for line in soup.split("\n"):
             line = line.split()
             if "mol_1" in line:
@@ -1712,6 +1712,7 @@ def determine_bead_type(delta_f, charge, hbonda, hbondd, in_ring, smi_frag): ###
         print("Charge is too large: %s" % charge)
         exit(1)
     bead_type = []
+    smi_frag = ''.join(char for char in smi_frag if char.isalpha() and char!='H')
     if charge != 0:
         # The compound has a +/- charge -> Q type
 

@@ -85,7 +85,6 @@ Andrew Abi-Mansour (andrew.gaam [at] gmail.com)
 ## Example
 To coarse-grain a molecule, simply provide its SMILES code (option `--smi SMI`) or a .SDF file (option `'--sdf file.sdf`). You also need to provide a name for the CG molecule (not longer than 5 characters) using the `--mol` option.  For instance, to coarse grain [aspirin](https://pubchem.ncbi.nlm.nih.gov/compound/2244#section=2D-Structure), you can either obtain/generate (e.g., from Open Babel) an SDF file:
 ```
-curl -o aspirin.sdf https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/CID/2244/record/SDF?record_type=3d&response_type=display
 python -m auto_martiniM3 --sdf aspirin.sdf --mol ASP 
 ```
 (the name ASP is arbitrary) or use its SMILES code within double quotes

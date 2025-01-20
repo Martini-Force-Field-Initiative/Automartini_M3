@@ -32,6 +32,7 @@ import logging
 import sys
 
 from . import __version__, solver
+from .common import *
 from .topology import gen_molecule_sdf, gen_molecule_smi
 
 def checkArgs(args):
@@ -107,18 +108,22 @@ logger.info("Running auto_martiniM3 v{}".format(__version__))
 # Generate molecule's structure from SDF or SMILES
 if args.sdf:
     mol = gen_molecule_sdf(args.sdf)
+    smiles = str(Chem.MolToSmiles(mol, isomericSmiles=False))
+    #mol, _ = gen_molecule_smi(smiles)
 else:
     mol, _ = gen_molecule_smi(args.smi)
+    smiles = args.smi
 
 ### AutoM3 change ###
 topname=args.molname+".itp"
 groname=args.molname+".gro"
+bartenderfname=""
 
 if args.bartender_output:
     bartenderfname=args.molname+"_bartenderINPUT.dat"
-    cg = solver.Cg_molecule(mol, args.smi, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
+    cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
 else:
-    cg = solver.Cg_molecule(mol, args.smi, args.molname, args.simple_model, topname, _, args.bartender_output, args.logp, args.forcepred)
+    cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
 if args.aa:
     cg.output_aa(args.aa)
 cg.output_cg(groname)

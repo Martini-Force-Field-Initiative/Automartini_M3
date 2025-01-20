@@ -520,7 +520,7 @@ def voronoi_atoms_new(cgbead_coords, heavyatom_coords): # AutoM3
                 partitioning[closest_bead] = lonely_bead
     else:
         for j in range(len(heavyatom_coords)):
-            partitioning[j] = len(cgbead_coords)
+            partitioning[j] = 0 #len(cgbead_coords)
     
     # initiating dict with beads as keys and their coordinates as list of values
     bead_coord={}

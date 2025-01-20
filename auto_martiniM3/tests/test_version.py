@@ -2,7 +2,7 @@
 Basic version test for the auto_martini package.
 """
 import pytest
-import auto_martini
+import auto_martiniM3
 
 try:
     from importlib import metadata
@@ -12,4 +12,4 @@ except ImportError:
 
 def test_auto_martini_version():
 
-    assert auto_martini.__version__ == metadata.version("auto_martini")
+    assert auto_martiniM3.__version__ == metadata.version("auto_martiniM3")
