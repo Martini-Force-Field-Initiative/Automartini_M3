@@ -134,7 +134,8 @@ def print_header(molname, mol_smi):
     
     info = (
         "; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour\n"
-        + "; updated to Martini 3 force field by Magdalena Szczuka, supervised by Matthieu Chavent and Pierre Poulain \n"
+        + "; updated to Martini 3 force field by Magdalena Szczuka\n"
+        + "; supervised by Matthieu Chavent and Pierre Poulain\n"
         + "; SMILE code : "+mol_smi +"\n\n"
         + "\n[moleculetype]\n"
         + "; molname       nrexcl\n"
