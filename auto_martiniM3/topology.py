@@ -126,6 +126,13 @@ def gen_molecule_sdf(sdf):
         if molecule is None:
             print("Error. Can't read molecule.")
             exit(1)
+    Chem.SanitizeMol(molecule)
+    molecule = Chem.AddHs(molecule)
+    AllChem.EmbedMolecule(molecule, randomSeed=1, useRandomCoords=True)  # Set Seed for random coordinate generation = 1.
+    try:
+        AllChem.UFFOptimizeMolecule(molecule)
+    except ValueError as e:
+        exit(1)
     return molecule
 
 def print_header(molname, mol_smi):
@@ -1594,7 +1601,7 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
         logP_data = {}
         if converted_smi:
             smi=real_smi
-        
+
         # Check if logp_file is a valid file name
         if isinstance(logp_file, str) and logp_file:
             try:

@@ -74,11 +74,11 @@ group.add_argument(
 )
 parser.add_argument("--logp",dest="logp",type=str,required=None,help="File with partial smiles and associated logP") #AutoM3 change: for custom database of fragments and logp, default file in scripts directory (logP_smi.dat)
 parser.add_argument("--mol", dest="molname", type=str, required=False, help="Name of CG molecule")
-parser.add_argument("--aa", dest="aa", type=str, help="filename of all-atom structure .gro file")
-parser.add_argument("-v","--verbose",dest="verbose",action="count",default=0,help="increase verbosity",)
-parser.add_argument("--fpred",dest="forcepred",action="store_true",help="Atomic partitioning prediction",)
-parser.add_argument("--bartender",dest="bartender_output",type=str,default=False,help="True, for generating bartender input file") #AutoM3 change
-parser.add_argument("--simple",dest="simple_model",type=str,default=False, help="True, for simple model without dihedrals nor virtual sites in topology file.") #AutoM3 change
+parser.add_argument("--aa", dest="aa", type=str, required=False, help="filename of all-atom structure .gro file")
+parser.add_argument("-v","--verbose",dest="verbose",action="count",default=0, required=False,help="increase verbosity",)
+parser.add_argument("--fpred",dest="forcepred",action="store_true", required=False,help="Atomic partitioning prediction",)
+parser.add_argument("--bartender",dest="bartender_output",type=str,default=False, required=False,help="True, for generating bartender input file") #AutoM3 change
+parser.add_argument("--simple",dest="simple_model",type=str,default=False, required=False, help="True, for simple model without dihedrals nor virtual sites in topology file.") #AutoM3 change
 
 if len(sys.argv) == 1:
     parser.print_help(sys.stderr)
@@ -108,11 +108,10 @@ logger.info("Running auto_martiniM3 v{}".format(__version__))
 # Generate molecule's structure from SDF or SMILES
 if args.sdf:
     mol = gen_molecule_sdf(args.sdf)
-    smiles = str(Chem.MolToSmiles(mol, isomericSmiles=False))
-    #mol, _ = gen_molecule_smi(smiles)
+    smiles = str(Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles=False)))
 else:
-    mol, _ = gen_molecule_smi(args.smi)
-    smiles = args.smi
+    mol, _ = gen_molecule_smi(Chem.CanonSmiles(args.smi))
+    smiles = (Chem.CanonSmiles(args.smi))
 
 ### AutoM3 change ###
 topname=args.molname+".itp"
