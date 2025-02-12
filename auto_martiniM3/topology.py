@@ -613,14 +613,9 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                         ):
                             found_connection = True
                     
-                    ### AutoM3 ### 
-                    for ib in range(len(molecule.GetBonds())):
-                            abond = molecule.GetBondWithIdx(ib)
-                            if (abond.GetBeginAtomIdx() == i and abond.GetEndAtomIdx() == j) or (abond.GetBeginAtomIdx() == j and abond.GetEndAtomIdx() == i):
-                                found_connection = True
                     if found_connection:
                         bondlist.append([i, j, dist])
-                    else:
+                    else: ### AutoM3 ### 
                         if cpt_ringatoms<7 and len(cgbeads)<5 and [i, j, dist] not in constlist:
                             constlist.append([i, j, dist])
         
@@ -1309,10 +1304,13 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             modified_lines_header.append(txt)
     modified_header_write="\n".join(modified_lines_header)
 
-    #Adding force to constraints 
+    #Adding force to constraints
     modified_lines_bonds=[]
+    bonds_list = []
     for line in list(bonds_write.split("\n")):
-        if '1' in line and len(line.split("   "))<7: 
+        if '1' in line:
+            bonds_list.append(f"{line.split('   ')[1]},{line.split('   ')[2]}")
+        if '1' in line and len(line.split("   "))<7:
             modified_lines_bonds.append(line+"    1000000")
         else:
             modified_lines_bonds.append(line)
@@ -1329,7 +1327,15 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
             if len(bond_line)>2 and not line.startswith(";"):
                 for vs, cb in virtual_sites.items():
                     if str(vs+1) == bond_line[1] or str(vs+1) == bond_line[2]:
-                        if line in modified_lines_bonds : modified_lines_bonds.remove(line)
+                        #Check if bond between bead B and VS is the only bond connecting B to the rest of the molecule: if yes, don't remove it
+                        nb_occ=0
+                        if str(vs+1) == bond_line[1]:
+                            for i in bonds_list:
+                                if bond_line[2] in i: nb_occ+=1
+                        else:
+                            for i in bonds_list:
+                                if bond_line[1] in i: nb_occ+=1
+                        if line in modified_lines_bonds and nb_occ>1: modified_lines_bonds.remove(line)
     modified_bonds_write = "\n".join(modified_lines_bonds)
 
     #Angles: delete lines describing interactions with VS 
