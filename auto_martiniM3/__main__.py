@@ -33,7 +33,7 @@ import sys
 
 from . import __version__, solver
 from .common import *
-from .topology import gen_molecule_sdf, gen_molecule_smi
+from .topology import gen_molecule_sdf, gen_molecule_smi, gen_smi_from_sdf
 
 def checkArgs(args):
     """ AutoM3 change: removed argument --top for simpler input, .itp file will be named by using --mol argument (mol.itp)"""
@@ -108,7 +108,7 @@ logger.info("Running auto_martiniM3 v{}".format(__version__))
 # Generate molecule's structure from SDF or SMILES
 if args.sdf:
     mol = gen_molecule_sdf(args.sdf)
-    smiles = str(Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles=False)))
+    smiles = gen_smi_from_sdf(mol)
 else:
     mol, _ = gen_molecule_smi(Chem.CanonSmiles(args.smi))
     smiles = (Chem.CanonSmiles(args.smi))

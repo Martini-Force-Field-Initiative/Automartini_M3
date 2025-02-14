@@ -44,14 +44,15 @@ def test_auto_martini_run_smiles(smiles: str, name: str, num_beads: int):
 
 
 @pytest.mark.parametrize(
-    "sdf_file,smiles,name,num_beads", 
+    "sdf_file,name,num_beads", 
     [
-        (dpath / "benzene.sdf", "c1ccccc1", "BENZ", 3), 
-        (dpath / "ibuprofen.sdf", "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O", "IBUP", 6)
+        (dpath / "benzene.sdf", "BENZ", 3), 
+        (dpath / "ibuprofen.sdf", "IBUP", 6)
     ],
 )
 
-def test_auto_martini_run_sdf(sdf_file: str, smiles: str, name:str, num_beads: int):
+def test_auto_martini_run_sdf(sdf_file: str, name:str, num_beads: int):
     mol = auto_martiniM3.topology.gen_molecule_sdf(str(sdf_file))
+    smiles = auto_martiniM3.topology.gen_smi_from_sdf(mol)
     cg_mol = auto_martiniM3.solver.Cg_molecule(mol, smiles, name,None,None,None,None,None,None)
     assert len(cg_mol.cg_bead_names) == num_beads

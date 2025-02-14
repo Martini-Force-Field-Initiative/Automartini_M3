@@ -135,6 +135,9 @@ def gen_molecule_sdf(sdf):
         exit(1)
     return molecule
 
+def gen_smi_from_sdf(mol):
+    return str(Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles=False)))
+
 def print_header(molname, mol_smi):
     """Print topology header"""
     text = "; GENERATED WITH Auto_Martini M3FF for {}\n".format(molname)
