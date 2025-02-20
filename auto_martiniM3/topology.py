@@ -135,9 +135,6 @@ def gen_molecule_sdf(sdf):
         exit(1)
     return molecule
 
-def gen_smi_from_sdf(mol):
-    return str(Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles=False)))
-
 def print_header(molname, mol_smi):
     """Print topology header"""
     text = "; GENERATED WITH Auto_Martini M3FF for {}\n".format(molname)
@@ -384,14 +381,6 @@ def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
     and charge of group."""
     frag = rdchem.EditableMol(molecule)
     # fragment smi: [H]N([H])c1nc(N([H])[H])n([H])n1
-
-    # Identify atoms involved in same ring as cg_bead (only one ring)
-    atoms_in_ring = []
-    for ring in ringatoms:
-        if cgbeads[cg_bead] in ring:
-            atoms_in_ring = ring[:]  # CHANGED
-            break
-
     num_atoms = molecule.GetConformer().GetNumAtoms()
 
     # First delete all hydrogens
@@ -1286,7 +1275,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                 if str(vs+1) == atom_line[0] and atom_line[7] != '0': 
                     vs_bead_names+=atom_line[1]
                     vs_mass[vs]=int(atom_line[7])
-                    modified_lines_atoms[i]=line.replace(atom_line[7],"  0")
+                    modified_lines_atoms[i]=line.replace(atom_line[7]," 0")
 
     for vs, cb in virtual_sites.items():
         for vs_env in cb:
@@ -1295,7 +1284,7 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                     atom_line2 = line2.split()
                     if str(vs_env+1) == atom_line2[0]:
                         new_mass = int(int(atom_line2[7]) + vs_mass[vs] / len(cb) ) #add 1/cb mass of VS
-                        modified_lines_atoms[j]=line2.replace(atom_line2[7], " " + str(new_mass))
+                        modified_lines_atoms[j]=line2.replace(atom_line2[7],str(new_mass))
     modified_atoms_write = "\n".join(modified_lines_atoms)
 
     modified_lines_header=[]
@@ -1728,7 +1717,7 @@ def determine_bead_type(delta_f, charge, hbonda, hbondd, in_ring, smi_frag): ###
         print("Charge is too large: %s" % charge)
         exit(1)
     bead_type = []
-    smi_frag = ''.join(char for char in smi_frag if char.isalpha() and char!='H')
+    #smi_frag = ''.join(char for char in smi_frag if char.isalpha() and char!='H')
     if charge != 0:
         # The compound has a +/- charge -> Q type
 
