@@ -77,9 +77,9 @@ parser.add_argument("--mol", dest="molname", type=str, required=False, help="Nam
 parser.add_argument("--aa", dest="aa", type=str, required=False, help="filename of all-atom structure .gro file")
 parser.add_argument("-v","--verbose",dest="verbose",action="count",default=0, required=False,help="increase verbosity")
 parser.add_argument("--fpred",dest="forcepred",action="store_true", required=False,help="Atomic partitioning prediction")
-parser.add_argument("--bartender",dest="bartender_output",type=str,default=False, required=False,help="True, for generating bartender input file") #AutoM3 change
-parser.add_argument("--simple",dest="simple_model",type=str,default=False, required=False, help="True, for simple model without dihedrals nor virtual sites in topology file.") #AutoM3 change
-parser.add_argument("--canon",dest="canonic_smiles",action="store_true", required=False,help="Translate to RdKit canon structure") #AutoM3 change
+parser.add_argument("--bartender",dest="bartender_output",action="store_true",required=False,help="Bartender input file") #AutoM3 change
+parser.add_argument("--simple",dest="simple_model",action="store_true",required=False,help="Simple model without dihedrals nor virtual sites") #AutoM3 change
+parser.add_argument("--canon",dest="canonic_smiles",action="store_true",required=False,help="Translate to RdKit canon structure") #AutoM3 change
 
 if len(sys.argv) == 1:
     parser.print_help(sys.stderr)
