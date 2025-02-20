@@ -72,8 +72,9 @@ optional arguments:
   --aa AA            filename of all-atom structure .gro file
   -v, --verbose      increase verbosity
   --fpred            Atomic partitioning prediction
-  --simple		       (False), <True> if simplified mapping wanted (without dihedrals nor virtual sites)
-  --bartender        (False), <True> for generating bartender (10.1021/acs.jctc.4c00275) input file 
+  --bartender        Bartender (10.1021/acs.jctc.4c00275) input file
+  --simple		       Simple model without dihedrals nor virtual sites
+  --canon		         Translate to RdKit canon structure
 Developers:
 ===========
 Magdalena Szczuka (magdalena.szczuka [at] univ-tlse3.fr)
