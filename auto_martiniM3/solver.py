@@ -107,16 +107,14 @@ class Cg_molecule:
         molecule = Chem.Mol(molecule)
         AllChem.EmbedMolecule(molecule)
         AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
-        AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) 
+        #AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) 
 
         feats = topology.extract_features(molecule)
 
         # Get list of heavy atoms and their coordinates
         list_heavy_atoms, self.list_heavyatom_names = topology.get_atoms(molecule)
 
-        conf, self.heavy_atom_coords = topology.get_heavy_atom_coords(molecule)
-
-        _, self.atom_coords = topology.get_atom_coords(molecule) # AutoM3 : for new voronoi partitioning function
+        conf, self.heavy_atom_coords, self.atom_coords = topology.get_heavy_atom_coords(molecule)
 
         # Identify ring-type atoms
         ring_atoms = topology.get_ring_atoms(molecule)
@@ -136,6 +134,7 @@ class Cg_molecule:
             conf,
             list_heavy_atoms,
             self.heavy_atom_coords,
+            self.atom_coords,
             ring_atoms,
             ring_atoms_flat, 
             force_map # AutoM3 new argument
@@ -165,18 +164,13 @@ class Cg_molecule:
             _, num_arom = topology.is_aromatic(molecule)
 
             if not force_map and num_arom<7: # AutoM3
-                self.atom_partitioning,_ = optimization.voronoi_atoms_new( 
-                    cg_bead_coords, self.heavy_atom_coords
+                self.atom_partitioning, self.cg_bead_coords = optimization.voronoi_atoms_new( 
+                    cg_bead_coords, self.heavy_atom_coords, self.atom_coords, molecule
                 )
-                _, self.cg_bead_coords = optimization.voronoi_atoms_new(
-                    cg_bead_coords, self.atom_coords
-                )
+
             else:
-                self.atom_partitioning,_ = optimization.voronoi_atoms_old(
-                    cg_bead_coords, self.heavy_atom_coords
-                )
-                _, self.cg_bead_coords = optimization.voronoi_atoms_old(
-                    cg_bead_coords, self.atom_coords
+                self.atom_partitioning, self.cg_bead_coords = optimization.voronoi_atoms_old(
+                    cg_bead_coords, self.heavy_atom_coords, self.atom_coords, molecule
                 )
             
             
@@ -206,6 +200,18 @@ class Cg_molecule:
 
             logger.info("; Atom partitioning: {atom_partitioning}")
 
+            # cgbeads should take atom rings number if ring atom in bead
+            cg_beads_rings = cg_beads.copy()
+            for i, b in enumerate(cg_beads):
+                if b not in ring_atoms_flat:
+                    atoms_in_b = []
+                    for at,bd in self.atom_partitioning.items():
+                        if bd == i : atoms_in_b.append(at)
+                    for a in atoms_in_b:
+                        if a in ring_atoms_flat:
+                            cg_beads_rings[i]=a
+                    
+
             self.cg_bead_names, bead_types, _, _ = topology.print_atoms(
                 molname,
                 forcepred,
@@ -228,8 +234,9 @@ class Cg_molecule:
             
             # Bond list
             try:
-                bond_list, const_list, _ = topology.print_bonds(
+                bond_list, const_list , _= topology.print_bonds(
                     cg_beads,
+                    cg_beads_rings,
                     molecule,
                     self.atom_partitioning,
                     self.cg_bead_coords,
@@ -269,6 +276,7 @@ class Cg_molecule:
 
                 bond_list, const_list, bonds_write = topology.print_bonds(
                     cg_beads,
+                    cg_beads_rings,
                     molecule,
                     self.atom_partitioning,
                     self.cg_bead_coords,
@@ -283,9 +291,7 @@ class Cg_molecule:
                     const_list,
                     ring_atoms,
                     self.cg_bead_coords,
-                    bead_types, # AutoM3 change
-                    molecule,
-                    self.atom_partitioning
+                    bead_types # AutoM3 change
                     )
 
                 angles_write, angle_list = topology.print_angles(
@@ -318,9 +324,9 @@ class Cg_molecule:
 
                 if len(ring_atoms)>0 and not simple_model:
                     if len(ring_atoms[0])>7:
-                        vs_write, virtual_sites, vs_bead_coords  = topology.print_virtualsites(ring_atoms,cg_bead_coords,self.atom_partitioning,molecule)
+                        vs_write, virtual_sites, rigid_dih  = topology.print_virtualsites(ring_atoms,self.cg_bead_coords,self.atom_partitioning,molecule)
                         
-                        self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,simple_model)
+                        self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,rigid_dih,simple_model)
                     
                     else:
                         self.topout, bartender_input_info = topology.topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, self.cg_bead_coords, ring_atoms, cg_beads)

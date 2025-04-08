@@ -309,7 +309,7 @@ def identify_functional_groups(mol): # AutoM3 change
     return ifgs
 
 def find_bead_pos(
-    molecule, conformer, list_heavy_atoms, heavyatom_coords, ring_atoms, ringatoms_flat, force_map
+    molecule, conformer, list_heavy_atoms, heavyatom_coords, allatom_coords, ring_atoms, ringatoms_flat, force_map
 ):
     """Try out all possible combinations of CG beads up to threshold number of beads per atom. Find
     arrangement with best energy score. Return all possible arrangements sorted by energy score."""
@@ -380,7 +380,7 @@ def find_bead_pos(
                 logger.info("; %s %s", trial_comb, trial_ene)
                 # Make sure all atoms within one bead would be connected
                 if all_atoms_in_beads_connected(
-                    trial_comb, heavyatom_coords, list_heavy_atoms, list_bonds, molecule, force_map
+                    trial_comb, heavyatom_coords, list_heavy_atoms, list_bonds, molecule, allatom_coords, force_map
                 ): # AutoM3 change : Added molecule and force_map arguments
                     
                     # Accept the move
@@ -407,7 +407,7 @@ def find_bead_pos(
     sorted_combs = np.array(sorted(list_trial_comb, key=itemgetter(2)), dtype="object")
     return sorted_combs[:, 0], sorted_combs[:, 1]
 
-def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, bondlist, mol,force_map): #AutoM3 change: added mol, force_map
+def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, bondlist, mol, allatom_coords, force_map): #AutoM3 change: added mol, force_map
     """Make sure all atoms within one CG bead are connected to at least
     one other atom in that bead"""
     logger.debug("Entering all_atoms_in_beads_connected()")
@@ -421,9 +421,9 @@ def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, 
 
     ### AutoM3 change of mapping approach to differenciate molecules with 0-1 and more cycles
     if not force_map and num_arom<7: #AutoM3 change
-        voronoi, _  = voronoi_atoms_new(cgbead_coords, heavyatom_coords) #AutoM3 change
+        voronoi, _  = voronoi_atoms_new(cgbead_coords, heavyatom_coords, allatom_coords, mol) #AutoM3 change
     else:
-        voronoi, _  = voronoi_atoms_old(cgbead_coords, heavyatom_coords) #AutoM3 change
+        voronoi, _  = voronoi_atoms_old(cgbead_coords, heavyatom_coords, allatom_coords, mol) #AutoM3 change
     logger.debug("voronoi %s" % voronoi)
 
     for i in range(len(trial_comb)):
@@ -446,7 +446,7 @@ def all_atoms_in_beads_connected(trial_comb, heavyatom_coords, list_heavyatoms, 
             return False
     return True
 
-def voronoi_atoms_new(cgbead_coords, heavyatom_coords): # AutoM3
+def voronoi_atoms_new(cgbead_coords, heavyatom_coords, allatom_coords, molecule): # AutoM3
     """
     Partition all atoms between CG beads, based on headliners coordinates and distances between other atoms coordinates. 
     Headliners are atoms with cgbead_coords coordinates.
@@ -521,24 +521,52 @@ def voronoi_atoms_new(cgbead_coords, heavyatom_coords): # AutoM3
     else:
         for j in range(len(heavyatom_coords)):
             partitioning[j] = 0 #len(cgbead_coords)
-    
-    # initiating dict with beads as keys and their coordinates as list of values
-    bead_coord={}
-    for bead in partitioning.values():
-        bead_coord[bead]=[]
 
-    for atom in range(len(heavyatom_coords)):
-        bead=partitioning[atom]
-        bead_coord[bead].append(heavyatom_coords[atom])
-    
+    # find all bonds between atoms in molecule
+    bonds = []
+    for b in range(len(molecule.GetBonds())):
+        abond = molecule.GetBondWithIdx(b)
+        at1 = abond.GetBeginAtomIdx()
+        at2 = abond.GetEndAtomIdx()
+        if f"{at1}-{at2}" not in bonds and f"{at2}-{at1}" not in bonds:
+            bonds.append(f"{at1}-{at2}")
+
+    # create partitioning including hydrogens inside beads
+    aa_partitioning = partitioning.copy()
+    for at in range(len(allatom_coords)):
+        if at not in aa_partitioning.keys():
+            hbead = None
+            for b in bonds:
+                bond = b.split('-')
+                if str(at) in bond:
+                    at1=int(bond[0])
+                    at2=int(bond[-1])
+                    if at==at1 and at2 in partitioning.keys(): 
+                        hbead = partitioning[at2]
+                        hydrogen = at1
+                    if at==at2 and at1 in partitioning.keys():
+                        hbead = partitioning[at1]
+                        hydrogen = at2
+
+                    if hbead is not None: # found hydrogen atom connected to 
+                        aa_partitioning[hydrogen]=hbead
+
+    #compute COG while taking into account hydrogens
+    bead_coord={}
+    for atom in range(len(allatom_coords)):
+        bead=aa_partitioning[atom]
+        if bead not in bead_coord.keys(): 
+            bead_coord[bead]=[]
+        bead_coord[bead].append(allatom_coords[atom])
+
     bead_cog=[]
-    for bead, coords in bead_coord.items():
-        bead_coord = np.stack(coords, axis=0)
-        cog = np.mean(bead_coord, axis=0)
+    for bead, coords in sorted(bead_coord.items()):
+        cog = np.mean(coords,axis=0)
         bead_cog.append(cog)
+
     return partitioning, bead_cog
 
-def voronoi_atoms_old(cgbead_coords, heavyatom_coords): #AutoM3 change
+def voronoi_atoms_old(cgbead_coords, heavyatom_coords, allatom_coords, molecule): #AutoM3 change
     """Partition all atoms between CG beads"""
     logger.debug("Entering voronoi_atoms()")
     partitioning = {}
@@ -595,20 +623,48 @@ def voronoi_atoms_old(cgbead_coords, heavyatom_coords): #AutoM3 change
                     exit(1)
                 partitioning[closest_bead] = lonely_bead
 
-    # AutoM3 change : finding the bead center coordinate for COG 
-    bead_coord={}
-    for bead in partitioning.values():
-        bead_coord[bead]=[]
+    # find all bonds between atoms in molecule
+    bonds = []
+    for b in range(len(molecule.GetBonds())):
+        abond = molecule.GetBondWithIdx(b)
+        at1 = abond.GetBeginAtomIdx()
+        at2 = abond.GetEndAtomIdx()
+        if f"{at1}-{at2}" not in bonds and f"{at2}-{at1}" not in bonds:
+            bonds.append(f"{at1}-{at2}")
 
-    for atom in range(len(heavyatom_coords)):
-        bead=partitioning[atom]
-        bead_coord[bead].append(heavyatom_coords[atom])
-    
+    # create partitioning including hydrogens inside beads
+    aa_partitioning = partitioning.copy()
+    for at in range(len(allatom_coords)):
+        if at not in aa_partitioning.keys():
+            hbead = None
+            for b in bonds:
+                bond = b.split('-')
+                if str(at) in bond:
+                    at1=int(bond[0])
+                    at2=int(bond[-1])
+                    if at==at1 and at2 in partitioning.keys(): 
+                        hbead = partitioning[at2]
+                        hydrogen = at1
+                    if at==at2 and at1 in partitioning.keys():
+                        hbead = partitioning[at1]
+                        hydrogen = at2
+
+                    if hbead is not None: # found hydrogen atom connected to 
+                        aa_partitioning[hydrogen]=hbead
+
+    #compute COG while taking into account hydrogens
+    bead_coord={}
+    for atom in range(len(allatom_coords)):
+        bead=aa_partitioning[atom]
+        if bead not in bead_coord.keys(): 
+            bead_coord[bead]=[]
+        bead_coord[bead].append(allatom_coords[atom])
+
     bead_cog=[]
-    for bead, coords in bead_coord.items():
-        bead_coord = np.stack(coords, axis=0)
-        cog = np.mean(bead_coord, axis=0)
+    for bead, coords in sorted(bead_coord.items()):
+        cog = np.mean(coords,axis=0)
         bead_cog.append(cog)
+
     return partitioning, bead_cog
 
 def functional_groups_ok(atom_partitioning,molecule,ringatoms): # AutoM3

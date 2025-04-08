@@ -239,26 +239,18 @@ def get_heavy_atom_coords(molecule):
     """Extract atomic coordinates of heavy atoms in molecule mol"""
     logger.debug("Entering get_heavy_atom_coords()")
     heavyatom_coords = []
+    allatom_coords=[] #AutoM3
     conformer = molecule.GetConformer()
     # number of atoms in mol
     num_atoms = molecule.GetConformer().GetNumAtoms()
     for i in range(num_atoms):
         if molecule.GetAtomWithIdx(i).GetSymbol() != "H":
             heavyatom_coords.append(np.array([conformer.GetAtomPosition(i)[j] for j in range(3)]))
+            allatom_coords.append(np.array([conformer.GetAtomPosition(i)[j] for j in range(3)]))
+        else:
+            allatom_coords.append(np.array([conformer.GetAtomPosition(i)[j] for j in range(3)]))
+    return conformer, heavyatom_coords, allatom_coords
 
-    return conformer, heavyatom_coords
-
-def get_atom_coords(molecule): # AutoM3 function
-    """Extract atomic coordinates of heavy atoms in molecule mol"""
-    logger.debug("Entering get_heavy_atom_coords()")
-    heavyatom_coords = []
-    conformer = molecule.GetConformer()
-    # number of atoms in mol
-    num_atoms = molecule.GetConformer().GetNumAtoms()
-    for i in range(num_atoms):
-        heavyatom_coords.append(np.array([conformer.GetAtomPosition(i)[j] for j in range(3)]))
-
-    return conformer, heavyatom_coords
 
 def extract_features(molecule):
     """Extract features of molecule"""
@@ -318,7 +310,7 @@ def read_params(val, size):  # AutoM3 function
                  'S-S-T-T': {180.0: 100.0},
                  'S-T-T-S': {180.0: 75.0, 0.0: 50.0},
                  'S-T-T-T': {180.0: 200.0, 0.0: 100.0},
-                 'T-T-T-T': {180.0: 200.0, 0.0: 200, 1.01: 1.01, 0.64: 0.605, 0.65: 0.6, -28.0: 200.0, 2.69: 14.12, 0.08: 2.31, 0.52: 0.373},
+                 'T-T-T-T': {180.0: 200.0, 0.0: 100},#, 1.01: 1.01, 0.64: 0.605, 0.65: 0.6, -28.0: 200.0, 2.69: 14.12, 0.08: 2.31, 0.52: 0.373},
                  'T-S-S-T': {180.0: 100.0},
                  'R-T-T-T': {180.0: 50.0},
                  'T-T-S-S': {180.0: 50.0},
@@ -376,7 +368,7 @@ def read_params(val, size):  # AutoM3 function
                     return force
         else: return None
 
-def substruct2smi(molecule, partitioning, cg_bead, cgbeads, ringatoms):
+def substruct2smi(molecule, partitioning, cg_bead):
     """Substructure to smiles conversion; also output Wildman-Crippen log_p;
     and charge of group."""
     frag = rdchem.EditableMol(molecule)
@@ -476,7 +468,7 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
         # Determine SMI of substructure
         try:
             smi_frag, wc_log_p, charge, atoms_in_smi, converted_smi, real_smi  = substruct2smi(
-                molecule, partitioning, bead, cgbeads, ringatoms
+                molecule, partitioning, bead
             )
         except Exception:
             raise
@@ -557,7 +549,7 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
 
     return atomnames, beadtypes, text, atoms_in_smi_dict    # AutoM3 new variable : atoms_in_smi_dict
 
-def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringatoms, trial=False):
+def print_bonds(cgbeads, cgbeads_ring, molecule, partitioning, cgbead_coords, beadtypes, ringatoms, trial=False):
     """print CG bonds in itp format"""
 
     logger.debug("Entering print_bonds()")
@@ -566,20 +558,20 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
     bondlist = []
     constlist = []
     text = ""
-    cpt_ringatoms = 0 #AutoM3 change
-    if ringatoms != []: cpt_ringatoms=len(ringatoms[0]) #AutoM3 change
+    cpt_ringatoms = 0 #AutoM3 change    
 
-
+    if ringatoms != []: 
+        cpt_ringatoms=len(sum(ringatoms,[])) #AutoM3 change
     if len(cgbeads) > 1:
         for i in range(len(cgbeads)):
             for j in range(i + 1, len(cgbeads)):
                 dist = np.linalg.norm(cgbead_coords[i] - cgbead_coords[j]) * 0.1
-                if dist < 0.65:  #AutoM3 change : was  0.5
+                if dist < 0.61:  #AutoM3 change : was  0.5
                     # Are atoms part of the same ring
                     for ring in ringatoms:
-                        if cgbeads[i] in ring and cgbeads[j] in ring:
+                        if cgbeads[i] in ring and cgbeads[j] in ring and [i, j, dist] not in constlist:
                             constlist.append([i, j, dist])   # AutoM3 change : removed boolean 
-                    
+
                     if dist < 0.134: # AutoM3 change : was 0.2
                         raise NameError("Bond too short") 
                 
@@ -607,9 +599,21 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                     
                     if found_connection:
                         bondlist.append([i, j, dist])
+
                     else: ### AutoM3 ### 
                         if cpt_ringatoms<7 and len(cgbeads)<5 and [i, j, dist] not in constlist:
                             constlist.append([i, j, dist])
+        
+        # AutoM3 : check if there are beads with ring atoms, that are not connected
+        for ir in range(len(cgbeads_ring)):
+            for jr in range(ir + 1, len(cgbeads_ring)):
+                distr = np.linalg.norm(cgbead_coords[ir] - cgbead_coords[jr]) * 0.1
+                if distr < 0.65:  #AutoM3 change : was  0.5
+                    # Are atoms part of the same ring
+                    for ring in ringatoms:
+                        if ( cgbeads_ring[ir] in ring and cgbeads_ring[jr] in ring and distr<=0.45 
+                            ) and ([ir, jr, distr] not in constlist and [ir, jr, distr] not in  bondlist ):
+                            constlist.append([ir, jr, distr])
         
         # AutoM3 : removed chunk
 
@@ -622,6 +626,7 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                 beads_with_const.append(c[0])
             if c[1] not in beads_with_const:
                 beads_with_const.append(c[1])
+
         beads_with_const = sorted(beads_with_const)
         for i in range(len(beads_with_const)):
             for j in range(1 + i, len(beads_with_const)):
@@ -648,7 +653,7 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
                         # If not in bondlist and in the same ring, add the contraint
                         if not in_bond_list and in_ring and [i, j, dist] not in constlist:
                             constlist.append([i, j, dist])
-
+                            
         if not trial:
             ### AutoM3 ###
             beadlist=[]
@@ -670,6 +675,8 @@ def print_bonds(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, ringa
 
                 for c in constlist:
                     if c not in bondlist:
+                        if cpt_ringatoms>18 and c[2]>0.415: 
+                            continue
                         text = text + "\n   {:<3d} {:<3d}   1       {:4.2f}".format(
                             c[0] + 1, c[1] + 1, c[2]
                         )
@@ -762,13 +769,14 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
                         for a in angle_list:
                             if i in a and j in a and k in a:
                                 new_angle = False
+                        
                         ### AutoM3 ###
                         if len(partitioning)>15:
                             for a1 in range(len(angle_list)):
                                 for a2 in range(len(angle_list)):
                                     if i in angle_list[a1] and j in angle_list[a1] and j in angle_list[a2] and k in angle_list[a2]:
                                         new_angle = False
-                        if new_angle:
+                        if new_angle :
                             angle_list.append([i, j, k, angle, forc_const])
 
         
@@ -780,18 +788,18 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
 
         if len(angle_list) > 0:
             text = text + "\n[angles]\n"
-            text = text + "; i j k         funct   angle   force.c.\n"
+            text = text + ";  i  j  k    funct  angle  force.c.\n"
             for a in angle_list:
                 ### AutoM3 ###
                 force = read_params(a[3],beadlist[a[0]]+"-"+beadlist[a[1]]+"-"+beadlist[a[2]])
                 if force is None : force=a[4]
-                text = text + "  {:d} {:d} {:d}         1       {:<5.1f}  {:5.1f}\n".format(
+                text = text + "  {:2} {:2} {:2}       1     {:<5.1f}   {:5.1f}\n".format(
                     a[0] + 1, a[1] + 1, a[2] + 1, a[3], force
                 )
             text = text
     return text, angle_list
 
-def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,partitioning):
+def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
     """Print CG dihedrals in itp format"""
     logger.debug("Entering print_dihedrals()")
 
@@ -855,9 +863,14 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
                                 cosphi = np.dot(p1, p2)
                                 sinphi = np.dot(r2, np.cross(p1, p2))
                                 angle = 180.0 / math.pi * np.arctan2(sinphi, cosphi)
+                                r1_1 = cgbead_coords[i] - cgbead_coords[j]
+                                r2_2 = cgbead_coords[j] - cgbead_coords[k]
+                                angle_ijk = 180.0 / math.pi * math.acos(np.dot(r1_1,r2) / (np.linalg.norm(r1_1) * np.linalg.norm(r2)))
+                                angle_jkl = 180.0 / math.pi * math.acos(np.dot(r2_2,r3) / (np.linalg.norm(r2_2) * np.linalg.norm(r3)))
                                 forc_const = 10.0
-                                dihed_list.append([i, j, k, l, angle, forc_const])
-        
+                                if angle_ijk<145.0 and angle_jkl<145.0 : # look Restricted bending potential in gromacs manual
+                                    dihed_list.append([i, j, k, l, angle, forc_const])
+
         ### AutoM3 ###
         bead_in_ring_coords={}
         for nb,bead_nb in enumerate(cgbeads):
@@ -871,7 +884,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
         new_dihed_list=dihed_list
         if len(dihed_list) > 0:
             text = text + "\n[dihedrals]\n"
-            text = text + ";  i j k l   funct   angle  force.c.\n"
+            text = text + ";  i  j  k  l  funct  angle  force.c.\n"
 
             for dl in dihed_list:
                 for di in dihed_list[1:]:
@@ -887,7 +900,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes,mol,
                 if force is None: force=d[5]
                 text = (
                     text
-                    + "  {:d} {:d} {:d} {:d}       2     {:<5.1f}  {:5.1f}\n".format(
+                    + "  {:2} {:2} {:2} {:2}    2    {:5.1f}    {:5.1f}\n".format(
                         d[0] + 1, d[1] + 1, d[2] + 1, d[3] + 1, d[4], force
                     )
                 )
@@ -909,32 +922,22 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
         begin_atom_idx = bond.GetBeginAtomIdx()
         end_atom_idx = bond.GetEndAtomIdx()
         
-        if mol.GetAtomWithIdx(begin_atom_idx).GetSymbol() != "H" and mol.GetAtomWithIdx(end_atom_idx).GetSymbol() != "H": # Check if not hydrogen
+        if (mol.GetAtomWithIdx(begin_atom_idx).GetSymbol() != "H" and mol.GetAtomWithIdx(end_atom_idx).GetSymbol() != "H") and (partitionning[begin_atom_idx]!=partitionning[end_atom_idx]): # Check if not hydrogen and not in the same bead
             if begin_atom_idx not in atom_bond_counts:
-                atom_bond_counts[begin_atom_idx] = 0
-            atom_bond_counts[begin_atom_idx] += 1
+                atom_bond_counts[begin_atom_idx] = 1
+            else : atom_bond_counts[begin_atom_idx] += 1
             
-        if mol.GetAtomWithIdx(begin_atom_idx).GetSymbol() != "H" and mol.GetAtomWithIdx(end_atom_idx).GetSymbol() != "H": # Check if not hydrogen
             if end_atom_idx not in atom_bond_counts:
-                atom_bond_counts[end_atom_idx] = 0
-            atom_bond_counts[end_atom_idx] += 1
+                atom_bond_counts[end_atom_idx] = 1
+            else: atom_bond_counts[end_atom_idx] += 1
     
     bead_bond_counts = {}
     for a, b in partitionning.items():
-        if b not in bead_bond_counts: bead_bond_counts[b] = 0
+        if b not in bead_bond_counts: 
+            bead_bond_counts[b] = 0
         for at, cpt in atom_bond_counts.items():
             if at == a: 
                 bead_bond_counts[b] += cpt
-    
-    #Normalization by bead size
-    for bead, cpt in bead_bond_counts.items():
-        at_cpt=0
-        for a,b in partitionning.items():
-            if bead == b:
-                at_cpt+=1
-        
-        bead_bond_counts[bead]/=at_cpt
-        bead_bond_counts[bead] = math.ceil(bead_bond_counts[bead])
 
     ring_atoms=[]
     virtual_sites={}
@@ -954,73 +957,80 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
         distances[bead]={}
         for other_bead, other_coord in bead_in_ring_coords.items():
             if bead != other_bead:
-                distance = ((coord[0] - other_coord[0]) ** 2 + (coord[1] - other_coord[1]) ** 2 + (coord[2] - other_coord[2]) ** 2) ** 0.5 
+                distance = np.linalg.norm(coord - other_coord) 
                 distances[bead][other_bead]=distance
-
-    #Find central bead(s) = bead which is closest to every other bead
-    cumulative_distances = {}
-    for bead, dist in distances.items():
-        cumulative_distance = 0
-        for other_bead,distance in dist.items():
-            cumulative_distance += distance
-        cumulative_distances[bead] = cumulative_distance
     
-    def find_more_vs(num_vs, cumulative_distances,cg_bead_coords,vs_bead_coords,distances):
-        sorted_beads = sorted(cumulative_distances.keys(), key=cumulative_distances.get)
+    def find_more_vs(num_vs,bead_bond_counts_sorted,cg_bead_coords,distances):
+        vs_bead_coords=[]
         virtual_sites={}
+        vs_list=[]
+        for i in range(num_vs):
+            vs_bead=int(list(bead_bond_counts_sorted.keys())[i])
+            vs_list.append(vs_bead)
 
-        # find VS coordinated
-        for i in range(len(cg_bead_coords)):
-            if i in sorted_beads[:num_vs]: 
-                vs_bead_coords.append(cg_bead_coords[i]) #most central beads coordinates
+            #if vs_bead not in virtual_sites: virtual_sites[vs_bead]=[]
+
+            for j in range(len(cg_bead_coords)):
+                if j==vs_bead: vs_bead_coords.append(cg_bead_coords[i])
         
-        #find VS beads - central beads of the molecule 
-        for i in range(num_vs):
-            middle_bead=sorted_beads[i]
-            virtual_sites[middle_bead]=[]
-        
-        #find constructing beads of VS
-        for i in range(num_vs):
-            vs = list(virtual_sites)[i] 
-            constructing_beads_dist = dict(sorted(distances[vs].items(), key=lambda item: item[1]))
-            constructing_beads = [bead for bead in constructing_beads_dist.keys() if bead not in virtual_sites]
-            virtual_sites[vs] = constructing_beads[:4]
+        for vs in vs_list:
+            constructing_beads_dist=dict(sorted(distances[vs].items(), key=lambda item: item[1]))
+            constructing_beads=[bead for bead in constructing_beads_dist.keys()]
+            for bead in constructing_beads:
+                if bead in vs_list: constructing_beads.remove(bead)
+            
+            if vs not in virtual_sites.keys():
+                virtual_sites[vs]=constructing_beads[:4]
         
         return virtual_sites
+
     
-    #Find number of fused cycles = number of needed virtual sites
+    #Find number of fused cycles = number of needed virtual sites    
+    bead_bond_counts_sorted = dict(sorted(bead_bond_counts.items(), key=lambda item: item[1], reverse=True))
+    cpt_ringatoms=len(sum(ringatoms,[]))
+
     for r_nb in range(len(ringatoms)):
-        if len(ringatoms[r_nb])>6 and len(ringatoms[r_nb])<13: # one fused cycle
+        if cpt_ringatoms>6 and cpt_ringatoms<19 : 
+            virtual_sites=find_more_vs(1,bead_bond_counts_sorted,cg_bead_coords,distances)
 
-            # Find the bead with most connections
-            most_connected_bead = max(bead_bond_counts, key=bead_bond_counts.get)
-
-            #finding coord of VS
-            for i in range(len(cg_bead_coords)):
-                if i==most_connected_bead: vs_bead_coords.append(cg_bead_coords[i])
-            
-            constructing_beads_dist=dict(sorted(distances[most_connected_bead].items(), key=lambda item: item[1]))
-            constructing_beads=[bead for bead in constructing_beads_dist.keys()]
-            virtual_sites[most_connected_bead]=constructing_beads[:4]
-
-        if len(ringatoms[r_nb])>12 and len(ringatoms[r_nb])<16: # 2 fused cycles
-            virtual_sites=find_more_vs(2, cumulative_distances,cg_bead_coords,vs_bead_coords,distances)
-        
-        if len(ringatoms[r_nb])>15:# 3 or more fused cycles
-            virtual_sites=find_more_vs(3, cumulative_distances,cg_bead_coords,vs_bead_coords,distances) 
+        if cpt_ringatoms>18: # more than 4 fused cycles
+            virtual_sites=find_more_vs(3,bead_bond_counts_sorted,cg_bead_coords,distances)
 
     text = text + "\n[virtual_sitesn]\n"
     text = text + "; site funct  constructing atom indices"
+    rigid_dihedral = []
     for vs, cb in virtual_sites.items():
-        if len(cb)==4:text = (text + "\n   {:d}       1     {:d} {:d} {:d} {:d}".format(
+        if len(cb)==4:
+            text = (text + "\n   {:d}       1     {:d} {:d} {:d} {:d}".format(
                                     vs+1, cb[0] + 1, cb[1] + 1, cb[2] + 1, cb[3] + 1
                                 )
                             )
-        if len(cb)==3:text = (text + "\n   {:d}       1     {:d} {:d} {:d}".format(
+            
+            # Find dihedral from constructing beads
+            i=cb[0]
+            j=cb[1]
+            k=cb[2]
+            l=cb[3]
+            r1 = cg_bead_coords[j] - cg_bead_coords[i]
+            r2 = cg_bead_coords[k] - cg_bead_coords[j]
+            r3 = cg_bead_coords[l] - cg_bead_coords[k]
+            p1 = np.cross(r1, r2) / (np.linalg.norm(r1) * np.linalg.norm(r2))
+            p2 = np.cross(r2, r3) / (np.linalg.norm(r2) * np.linalg.norm(r3))
+            r2 /= np.linalg.norm(r2)
+            cosphi = np.dot(p1, p2)
+            sinphi = np.dot(r2, np.cross(p1, p2))
+            angle = 180.0 / math.pi * np.arctan2(sinphi, cosphi)
+            force=100
+            new_dih="  {:2} {:2} {:2} {:2}    2    {:5.1f}    {:5.1f}".format(cb[0]+1,cb[1]+1,cb[2]+1,cb[3]+1, round(angle,2), force)
+            rigid_dihedral.append(new_dih)
+
+        if len(cb)==3:
+            text = (text + "\n   {:d}       1     {:d} {:d} {:d}".format(
                                     vs+1, cb[0] + 1, cb[1] + 1, cb[2] + 1
                                 )
                             )
-    return text, virtual_sites,vs_bead_coords
+        
+    return text, virtual_sites, rigid_dihedral
 
 
 def print_virtualsites_dummy(cg_beads,ring_atoms,cg_bead_coords): ### AutoM3 ###
@@ -1162,8 +1172,8 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
     molname=""
     for line in list(atoms_write.split("\n")):
         if line != "":
-            x = line.split("   ")
-            molname=x[5]
+            x = line.split()
+            molname=x[3]
     modified_header_write=header_write
     modified_bonds_write=bonds_write
     exclusions_net=""
@@ -1222,17 +1232,19 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
 
         modified_bonds_write="\n".join(modified_lines_bonds)
 
-    modified_lines_angles = []
-    #Clean angles already described by dihedrals
-    for lineA in list(angles_write.split("\n")):
-        if lineA not in modified_lines_angles: modified_lines_angles.append(lineA)
-        for lineD in list(dihedrals_write.split("\n")):
-            angle_line = lineA.split(" ")
-            dihed_line = lineD.split(" ")
-            if len(dihed_line)>2 and not lineD.startswith(";") and len(angle_line)>2 and not lineA.startswith(";"):
-                if angle_line[2] in dihed_line[2:6] and angle_line[3] in dihed_line[2:6] and angle_line[4] in dihed_line[2:6] and lineA in modified_lines_angles:
-                    modified_lines_angles.remove(lineA)
-    modified_angles_write = "\n".join(modified_lines_angles)
+    if len(cg_beads)>4:
+        #Clean angles already described by dihedrals
+        modified_lines_angles = []
+        for lineA in list(angles_write.split("\n")):
+            if lineA not in modified_lines_angles: modified_lines_angles.append(lineA)
+            for lineD in list(dihedrals_write.split("\n")):
+                angle_line = lineA.split()
+                dihed_line = lineD.split()
+                if len(dihed_line)>2 and not lineD.startswith(";") and len(angle_line)>2 and not lineA.startswith(";"):
+                    if angle_line[0] in dihed_line[:4] and angle_line[1] in dihed_line[:4] and angle_line[2] in dihed_line[:4] and lineA in modified_lines_angles:
+                        modified_lines_angles.remove(lineA)
+        modified_angles_write = "\n".join(modified_lines_angles)
+    else : modified_angles_write = angles_write
 
     #bartender info search
     bartender_input_info={}
@@ -1251,7 +1263,7 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
     text = modified_header_write +"\n"+ atoms_write +"\n"+ modified_bonds_write +"\n"+ modified_angles_write +"\n"+ dihedrals_write+exclusions_net
     return text, bartender_input_info
 
-def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, simple_model): ### AutoM3 ###
+def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, rigid_dih, simple_model): ### AutoM3 ###
     """AutoM3 : Prints whole .itp file with all bonded and nonbonded parameters. """
     text = ""
     bartender_input_info={}
@@ -1259,9 +1271,9 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
     molname=""
     for line in list(atoms_write.split("\n")):
         if line != "":
-            x = line.split("   ")
-            molname=x[5]
-            nb_beads=int(x[1])
+            x = line.split()
+            molname=x[3]
+            nb_beads=int(x[0])
 
     #Atoms: add bead VS
     vs_bead_names=""
@@ -1313,20 +1325,31 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
     modified_bonds_write = "\n".join(modified_lines_bonds)
     
     #Bonds / Constraints: delete lines describing interactions with VS
+    bond_with_vs={}
     for line in list(modified_bonds_write.split("\n")):
         if line !="":
-            bond_line = line.split("   ")
+            bond_line = line.split()
             if len(bond_line)>2 and not line.startswith(";"):
                 for vs, cb in virtual_sites.items():
-                    if str(vs+1) == bond_line[1] or str(vs+1) == bond_line[2]:
+                    if str(vs+1) in bond_line[:2]:
+                        # memorizing atom bonded with VS = vs_bond
+                        if str(vs+1) == bond_line[0] : vs_bond = bond_line[1] 
+                        if str(vs+1) == bond_line[1] : vs_bond = bond_line[0]
+
+                        #memorize VS bond count
+                        if str(vs+1) not in bond_with_vs:
+                            bond_with_vs[str(vs+1)]=[]
+                        if vs_bond not in bond_with_vs.values():
+                            bond_with_vs[str(vs+1)].append(vs_bond) #beads bounded to VS
+
                         #Check if bond between bead B and VS is the only bond connecting B to the rest of the molecule: if yes, don't remove it
                         nb_occ=0
-                        if str(vs+1) == bond_line[1]:
-                            for i in bonds_list:
-                                if bond_line[2] in i: nb_occ+=1
-                        else:
+                        if str(vs+1) == bond_line[0]:
                             for i in bonds_list:
                                 if bond_line[1] in i: nb_occ+=1
+                        else:
+                            for i in bonds_list:
+                                if bond_line[0] in i: nb_occ+=1
                         if line in modified_lines_bonds and nb_occ>1: modified_lines_bonds.remove(line)
     modified_bonds_write = "\n".join(modified_lines_bonds)
 
@@ -1334,35 +1357,41 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
     modified_lines_angles = []
     for line in list(angles_write.split("\n")):
         if line !="":
-            angle_line = line.split(" ")
+            angle_line = line.split()
             if line not in modified_lines_angles: 
                 modified_lines_angles.append(line)
             if len(angle_line)>2 and not line.startswith(";"):
                 for vs, cb in virtual_sites.items():
-                    if str(vs+1) == angle_line[2] or str(vs+1) == angle_line[3] or str(vs+1) == angle_line[4] :
+                    #if str(vs+1) == angle_line[0] or str(vs+1) == angle_line[1] or str(vs+1) == angle_line[2] :
+                    if str(vs+1) in angle_line[:3] :
                         if line in modified_lines_angles : modified_lines_angles.remove(line)
 
     #Clean angles already described by dihedrals 
     for lineA in modified_lines_angles:
         for lineD in list(dihedrals_write.split("\n")):
-            angle_line = lineA.split(" ")
-            dihed_line = lineD.split(" ")
+            angle_line = lineA.split()
+            dihed_line = lineD.split()
             if len(dihed_line)>2 and not lineD.startswith(";") and len(angle_line)>2 and not lineA.startswith(";"):
-                if angle_line[2] in dihed_line[2:6] and angle_line[3] in dihed_line[2:6] and angle_line[4] in dihed_line[2:6]:
+                if angle_line[0] in dihed_line[:4] and angle_line[1] in dihed_line[:4] and angle_line[2] in dihed_line[:4]:
                     if lineA in modified_lines_angles : modified_lines_angles.remove(lineA)
     modified_angles_write = "\n".join(modified_lines_angles)
 
     if not simple_model:
         #Dihedrals: delete lines describing interactions with VS
         modified_lines_dihedrals = []
+        dih_list = []
         for line in list(dihedrals_write.split("\n")):
             if line !="":
-                dihed_line = line.split(" ")
+                dihed_line = line.split()
                 if line not in modified_lines_dihedrals: modified_lines_dihedrals.append(line)
                 if len(dihed_line)>2 and not line.startswith(";"):
+                    dih_list.append(dihed_line[:4])
                     for vs, cb in virtual_sites.items():
-                        if str(vs+1) in dihed_line[:6] :
+                        if str(vs+1) in dihed_line[:4] :
                             if line in modified_lines_dihedrals : modified_lines_dihedrals.remove(line)
+        for i in rigid_dih:
+            modified_lines_dihedrals.append(i)
+        
         modified_dihedrals_write = "\n".join(modified_lines_dihedrals)
     else:
         modified_dihedrals_write = dihedrals_write
