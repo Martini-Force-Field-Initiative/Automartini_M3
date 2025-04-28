@@ -331,42 +331,54 @@ def read_params(val, size):  # AutoM3 function
 
     if len(size)==5: #angles
         key_exists=False
-        if size not in angles.keys():
-            for k in angles.keys():
-                if size[0] in k and size[2] in k and size[4] in k: key_exists=True
-
-        if key_exists:
-            for s in angles.keys():
-                size=rearrange_until_match(size)
-                if size==s: break
         if size in angles.keys():
             for k,v in angles.items():
                 if k == size:
                     closest_length = find_closest_key(v, val)
                     force = v[closest_length]
                     return force
-        else: return None
+        else:
+            for k in angles.keys():
+                if size[0] in k and size[2] in k and size[4] in k: key_exists=True
+
+            if key_exists:
+                for s in angles.keys():
+                    size=rearrange_until_match(size)
+                    if size==s: break
+                    else : size=rearrange_until_match(size)
+                if size in angles.keys():
+                    for k,v in angles.items():
+                        if k == size:
+                            closest_length = find_closest_key(v, val)
+                            force = v[closest_length]
+                            return force
+            else: return None
 
     if len(size)==7: #dihedrals
         key_exists=False
-        if size not in dihedrals.keys():
-            for k in dihedrals.keys():
-                if size[0] in k and size[2] in k and size[4] in k and size[6] in k: key_exists=True
-
-        if key_exists:
-            for s in dihedrals.keys():
-                size_trial=rearrange_until_match(size)
-                if size_trial==s: 
-                    size==s
-                    break
-
         if size in dihedrals.keys():
             for k,v in dihedrals.items():
                 if k == size:
                     closest_length = find_closest_key(v, val)
                     force = v[closest_length]
                     return force
-        else: return None
+        else:
+            for k in dihedrals.keys():
+                if size[0] in k and size[2] in k and size[4] in k and size[6] in k: key_exists=True
+
+            if key_exists:
+                for s in dihedrals.keys():
+                    size_trial=rearrange_until_match(size)
+                    if size_trial==s: break
+                    else :  size_trial=rearrange_until_match(size)
+                if size_trial in dihedrals.keys():
+                    for k,v in dihedrals.items():
+                        if k == size_trial:
+                            closest_length = find_closest_key(v, val)
+                            force = v[closest_length]
+                            return force
+
+            else: return None
 
 def substruct2smi(molecule, partitioning, cg_bead):
     """Substructure to smiles conversion; also output Wildman-Crippen log_p;
@@ -790,7 +802,6 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
             text = text + "\n[angles]\n"
             text = text + ";  i  j  k    funct  angle  force.c.\n"
             for a in angle_list:
-                ### AutoM3 ###
                 force = read_params(a[3],beadlist[a[0]]+"-"+beadlist[a[1]]+"-"+beadlist[a[2]])
                 if force is None : force=a[4]
                 text = text + "  {:2} {:2} {:2}       1     {:<5.1f}   {:5.1f}\n".format(
