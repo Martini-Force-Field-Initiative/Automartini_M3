@@ -322,8 +322,8 @@ class Cg_molecule:
 
                 ### AutoM3 outputs ###
 
-                if len(ring_atoms)>0 and not simple_model:
-                    if len(ring_atoms[0])>7:
+                if len(ring_atoms_flat)>0 and not simple_model:
+                    if len(ring_atoms_flat)>7:
                         vs_write, virtual_sites, rigid_dih  = topology.print_virtualsites(ring_atoms,self.cg_bead_coords,self.atom_partitioning,molecule)
                         
                         self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,rigid_dih,simple_model)
