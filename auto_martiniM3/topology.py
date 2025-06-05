@@ -1413,24 +1413,22 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
         row = " ".join(map(str, range(i, nb_beads + 1)))
         exclusions_net="   "+exclusions_net+row+"\n"
     
+
     #bartender info search
     bartender_input_info["BONDS"]=[]
     for line in list(modified_bonds_write.split("\n")):
-        if "1" in line:
-            x=line.split("   ")
-            bartender_input_info["BONDS"].append(x[1:3])
+        if ";" not in line and len(line.split())>4:
+            bartender_input_info["BONDS"].append(line.split()[:2])
     
     bartender_input_info["ANGLES"]=[]
     for line in list(modified_angles_write.split("\n")):
-        if "2" in line:
-            x=line.split(" ")
-            bartender_input_info["ANGLES"].append(x[2:5])
+        if ";" not in line and len(line.split())>5:
+            bartender_input_info["ANGLES"].append(line.split()[:3])
     
     bartender_input_info["DIHEDRALS"]=[]
     for line in list(dihedrals_write.split("\n")): # not modified_dihedrals_write because VS are not visible in bartender input
-        if "2" in line:
-            x=line.split(" ")
-            bartender_input_info["DIHEDRALS"].append(x[2:6])
+        if ";" not in line and len(line.split())>6:
+            bartender_input_info["DIHEDRALS"].append(line.split()[:4])
     text = modified_header_write +"\n"+ modified_atoms_write+"\n"+ modified_bonds_write+"\n"+ modified_angles_write+ "\n"+ modified_dihedrals_write + "\n"+ vs_write + exclusions_net
     return text, vs_bead_names, bartender_input_info
 

@@ -4,7 +4,7 @@ Basic sanity test for the auto_martini package.
 import filecmp
 import os
 from pathlib import Path
-
+from rdkit import Chem
 import pytest
 
 import auto_martiniM3
@@ -53,6 +53,6 @@ def test_auto_martini_run_smiles(smiles: str, name: str, num_beads: int):
 
 def test_auto_martini_run_sdf(sdf_file: str, name:str, num_beads: int):
     mol = auto_martiniM3.topology.gen_molecule_sdf(str(sdf_file))
-    smiles = auto_martiniM3.topology.gen_smi_from_sdf(mol)
+    smiles = str(Chem.MolToSmiles(mol, isomericSmiles=False))
     cg_mol = auto_martiniM3.solver.Cg_molecule(mol, smiles, name,None,None,None,None,None,None)
     assert len(cg_mol.cg_bead_names) == num_beads

@@ -5,10 +5,6 @@ Auto_MartiniM3
 
 A toolkit that enables automatic generation of Martini forcefields for small organic molecules, now in agreement with Martini 3 Force Field parameters. 
 
-For a detailed account of the software, see:
-
-still writing...
-
 ## Developers
 * Magdalena Szczuka (University Toulouse 3, France)
 * Tristan Bereau (University of Amsterdam, Netherlands)   
@@ -64,17 +60,17 @@ usage: auto_martiniM3 [-h] [--mode {run,test}] [--sdf SDF | --smi SMI]
 Generates Martini 3 force field for atomistic structures of small organic molecules
 
 optional arguments:
-  -h, --help         show this help message and exit
-  --mode {run,test}  mode: run (compute FF) or test (validate)
+  -h, --help         Show this help message and exit
+  --mode {run,test}  Mode: run (compute FF) or test (validate)
   --sdf SDF          SDF file of atomistic coordinates
   --smi SMI          SMILES string of atomistic structure
   --mol MOLNAME      Name of CG molecule
-  --aa AA            filename of all-atom structure .gro file
-  -v, --verbose      increase verbosity
+  --aa AA            Filename of all-atom structure .gro file
+  -v, --verbose      Increase verbosity
   --fpred            Atomic partitioning prediction
-  --bartender        Bartender (10.1021/acs.jctc.4c00275) input file
-  --simple		       Simple model without dihedrals nor virtual sites
-  --canon		         Translate to RdKit canon structure
+  --bartender        Create Bartender (10.1021/acs.jctc.4c00275) input file
+  --simple		     Simple model without dihedrals nor virtual sites
+  --canon		     Translate to RdKit canon structure
 Developers:
 ===========
 Magdalena Szczuka (magdalena.szczuka [at] univ-tlse3.fr)
@@ -96,7 +92,8 @@ In case no problem arises, it will output the gromacs ASP.itp file:
 ```
 ; GENERATED WITH Auto_Martini M3FF for ASP
 ; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour
-; updated to Martini 3 force field by Magdalena Szczuka, supervised by Matthieu Chavent and Pierre Poulain 
+; updated to Martini 3 force field by Magdalena Szczuka
+; supervised by Matthieu Chavent and Pierre Poulain
 ; SMILES code : CC(=O)OC1=CC=CC=C1C(=O)O
 
 
@@ -109,31 +106,31 @@ In case no problem arises, it will output the gromacs ASP.itp file:
 
    1       SN5a    1   ASP     N01       1        0    54   ;   CC=O     ; atoms: C0, C1, O2,          
    2       TP2a    1   ASP     P01       2        0    36   ;   CO       ; atoms: O3, C4,          
-   3       SC5     1   ASP     C01       3        0    54   ;   CC=C     ; atoms: C5, C6, C7,          
-   4       TC5     1   ASP     C02       4        0    36   ;   C=C      ; atoms: C8, C9,          
-   5       SP3d    1   ASP     P02       5        0    54   ;   O=CO     ; atoms: C10, O11, O12,          
+   3       TC5     1   ASP     C01       3        0    36   ;   C=C      ; atoms: C5, C6,          
+   4       SC5     1   ASP     C02       4        0    54   ;   CC=C     ; atoms: C7, C8, C9,          
+   5       SN6d    1   ASP     N02       5        0    54   ;   O=CO     ; atoms: C10, O11, O12, ; ALOGPS defined bead
 
 [bonds]
 ;  i   j     funct   length   force.c.
-   1   2     1       0.36       5000.00
-   2   3     1       0.26       25000.00
-   2   4     1       0.37       25000.00
-   3   4     1       0.27       25000.00
-   4   5     1       0.41       25000.00
+   1   2     1       0.27       25000.00
+   2   3     1       0.27       25000.00
+   2   4     1       0.33       10000.00
+   3   4     1       0.28       100000.00
+   4   5     1       0.35       5000.00
 #ifndef FLEXIBLE
 [constraints]
 #endif
 ;  i   j     funct   length
 
 [angles]
-; i j k         funct   angle   force.c.
-  1 2 5         1       84.3   100.0
-  1 4 5         1       46.9   100.0
+;  i  j  k    funct  angle  force.c.
+   1  2  5       1     95.8    100.0
+   1  4  5       1     52.7     25.0
 
 [dihedrals]
-;  i j k l   funct   angle  force.c.
-  1 2 3 4       2     124.6   10.0
-  2 3 4 5       2     0.3     10.0
+;  i  j  k  l  funct  angle  force.c.
+   1  2  3  4    2    -135.5     25.0
+   2  3  4  5    2     -0.5     25.0
 
 [exclusions]
   1 4
