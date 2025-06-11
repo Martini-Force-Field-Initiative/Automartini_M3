@@ -12,8 +12,9 @@ A toolkit that enables automatic generation of Martini forcefields for small org
 * Andrew Abi-Mansour (Molecular Sciences Software Institute, Virginia Tech, Blacksburg, US)
 
 ## Supervisors
-* Matthieu Chavent (Centre de Biologie Intégrative (CBI), University Toulouse 3, CNRS, France)
+* Matthieu Chavent (Centre de Biologie Intégrative (CBI)), University Toulouse 3, CNRS, France)
 * Pierre Poulain (Université Paris Cité, France)
+* Paulo C. T. Souza (Laboratoire de Biologie et Modélisation de la Cellule, UMR 5239, ENS Lyon, France)
 
 ## Installation with conda
 
