@@ -94,7 +94,7 @@ In case no problem arises, it will output the gromacs ASP.itp file:
 ; GENERATED WITH Auto_Martini M3FF for ASP
 ; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour
 ; updated to Martini 3 force field by Magdalena Szczuka
-; supervised by Matthieu Chavent and Pierre Poulain
+; supervised by Matthieu Chavent, Pierre Poulain and Paulo C. T. Souza
 ; SMILES code : CC(=O)OC1=CC=CC=C1C(=O)O
 
 
