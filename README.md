@@ -3,7 +3,7 @@ Auto_MartiniM3
 
 ## What is Auto_MartiniM3?
 
-A toolkit that enables automatic generation of Martini forcefields for small organic molecules, now in agreement with Martini 3 Force Field parameters. 
+A toolkit that enables automatic generation of Martini force field for small organic molecules up to 25 heavy atoms, now in agreement with Martini 3 Force Field parameters. 
 
 ## Developers
 * Magdalena Szczuka (University Toulouse 3, France)
