@@ -337,22 +337,6 @@ def read_params(val, size):  # AutoM3 function
                     closest_length = find_closest_key(v, val)
                     force = v[closest_length]
                     return force
-        else:
-            for k in angles.keys():
-                if size[0] in k and size[2] in k and size[4] in k: key_exists=True
-
-            if key_exists:
-                for s in angles.keys():
-                    size=rearrange_until_match(size)
-                    if size==s: break
-                    else : size=rearrange_until_match(size)
-                if size in angles.keys():
-                    for k,v in angles.items():
-                        if k == size:
-                            closest_length = find_closest_key(v, val)
-                            force = v[closest_length]
-                            return force
-            else: return None
 
     if len(size)==7: #dihedrals
         key_exists=False
@@ -362,23 +346,6 @@ def read_params(val, size):  # AutoM3 function
                     closest_length = find_closest_key(v, val)
                     force = v[closest_length]
                     return force
-        else:
-            for k in dihedrals.keys():
-                if size[0] in k and size[2] in k and size[4] in k and size[6] in k: key_exists=True
-
-            if key_exists:
-                for s in dihedrals.keys():
-                    size_trial=rearrange_until_match(size)
-                    if size_trial==s: break
-                    else :  size_trial=rearrange_until_match(size)
-                if size_trial in dihedrals.keys():
-                    for k,v in dihedrals.items():
-                        if k == size_trial:
-                            closest_length = find_closest_key(v, val)
-                            force = v[closest_length]
-                            return force
-
-            else: return None
 
 def substruct2smi(molecule, partitioning, cg_bead):
     """Substructure to smiles conversion; also output Wildman-Crippen log_p;
@@ -992,7 +959,6 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
             
             if vs not in virtual_sites.keys():
                 virtual_sites[vs]=constructing_beads[:4]
-        
         return virtual_sites
 
     
@@ -1040,140 +1006,29 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
                                     vs+1, cb[0] + 1, cb[1] + 1, cb[2] + 1
                                 )
                             )
+        if len(cb)==2:
+            text = (text + "\n   {:d}       1     {:d} {:d}".format(
+                                    vs+1, cb[0] + 1, cb[1] + 1
+                                )
+                            )
         
     return text, virtual_sites, rigid_dihedral
-
-
-def print_virtualsites_dummy(cg_beads,ring_atoms,cg_bead_coords): ### AutoM3 ###
-    """Archived AutoM3 function for printing dummy CG virtual sites in itp format. Dummy VS = non existent bead."""
-    logger.debug("Entering print_virtualsites()")
-
-    text = ""
-    vs_bead_coords=[]
-    virtual_sites={}
-    ring_atoms=ring_atoms[0]
-    bead_in_ring_coords={}
-
-    for nb,bead_nb in enumerate(cg_beads):
-        if bead_nb in ring_atoms:bead_in_ring_coords[nb]=cg_bead_coords[nb]
-
-    if len(ring_atoms)<13: # max two cycles in a molecule 
-        vs_bead = len(cg_beads)+1
-        total_X=0
-        total_Y=0
-        total_Z=0
-        center_of_mass = np.zeros(3)
-        for bead, coords in bead_in_ring_coords.items():
-            total_X+=coords[0]
-            total_Y+=coords[1]
-            total_Z+=coords[2]
-        center_of_mass = np.array([total_X/len(bead_in_ring_coords), total_Y/len(bead_in_ring_coords), total_Z/len(bead_in_ring_coords)])
-        vs_bead_coords=center_of_mass
-        bead_in_ring_coords[vs_bead]=center_of_mass
-
-        distances = {}
-        for bead, coord in bead_in_ring_coords.items():
-            distances[bead]={}
-            for other_bead, other_coord in bead_in_ring_coords.items():
-                if bead != other_bead:
-                    dist = ((coord[0] - other_coord[0]) ** 2 + (coord[1] - other_coord[1]) ** 2 + (coord[2] - other_coord[2]) ** 2) ** 0.5 
-                    distances[bead][other_bead]=dist
-
-        cumulative_distances = {}
-        for bead, dist in distances.items():
-            cumulative_distance = 0
-            for other_bead,distance in dist.items():
-                cumulative_distance += distance
-            cumulative_distances[bead] = cumulative_distance
-    
-        constructing_beads_coords=dict(sorted(distances[vs_bead].items(), key=lambda item: item[1]))
-        constructing_beads=[bead for bead in sorted(constructing_beads_coords.keys())]
-        if len(constructing_beads)>4: virtual_sites[vs_bead]=constructing_beads[1:5] #beside the first closest, because it's probably right below VS
-        else: virtual_sites[vs_bead]=constructing_beads[:4]
-    
-    else: # case of more than 2 cycles
-        bead_coordinates = np.array(list(bead_in_ring_coords.values()))
-        bead_numbers = list(bead_in_ring_coords.keys())
-        bead_x_1D={i:x for i,(x,y,z) in enumerate(bead_coordinates)}
-        bead_x_1D_sorted=dict(sorted(bead_x_1D.items(), key=lambda x:x[1]))
-        bead_nb_1D=[x for x in bead_x_1D_sorted.keys()]
-        groups=[]
-        num_groups=-(-(len(bead_numbers))//5) # before : 4
-        cpt=0
-        while cpt<=num_groups:
-            if bead_nb_1D[:5] not in groups: groups.append(bead_nb_1D[:5]) # add first 4 beads
-            if len(bead_nb_1D) > 5 : bead_nb_1D=bead_nb_1D[2:] # remove first 2 beads
-            cpt+=1
-        for vs_nb in range(len(groups)):
-            vs=groups[vs_nb]
-            vs_bead = len(cg_beads)+vs_nb+1
-            total_X=0
-            total_Y=0
-            total_Z=0
-            center_of_mass = np.zeros(3)
-            for b,c in bead_in_ring_coords.items():
-                if b in vs:
-                    bead=b
-                    coords=c
-                    total_X+=coords[0]
-                    total_Y+=coords[1]
-                    total_Z+=coords[2]
-            center_of_mass = np.array([total_X/len(vs), total_Y/len(vs), total_Z/len(vs)])
-            vs_bead_coords.append(np.array(center_of_mass))
-            bead_in_ring_coords[vs_bead]=center_of_mass
-            distances = {}
-            for b,c in bead_in_ring_coords.items():
-                if b in vs or b==vs_bead:
-                    bead=b
-                    coord=c
-                    distances[bead]={}
-                    for o_b, o_c in bead_in_ring_coords.items():
-                        if o_b in vs or o_b==vs_bead:
-                            other_bead=o_b
-                            other_coord=o_c
-                            if bead != other_bead:
-                                dist = ((coord[0] - other_coord[0]) ** 2 + (coord[1] - other_coord[1]) ** 2 + (coord[2] - other_coord[2]) ** 2) ** 0.5
-                                distances[bead][other_bead]=dist
-            cumulative_distances = {}
-            for bead, dist in distances.items():
-                cumulative_distance = 0
-                for other_bead,distance in dist.items():
-                    cumulative_distance += distance
-                cumulative_distances[bead] = cumulative_distance
-            constructing_beads_coords=dict(sorted(distances[vs_bead].items(), key=lambda item: item[1]))
-            constructing_beads=[bead for bead in sorted(constructing_beads_coords.keys())]
-            if len(constructing_beads)>4: virtual_sites[vs_bead]=constructing_beads[1:5] #beside the first closest, because it's probably right below VS
-            else: virtual_sites[vs_bead]=constructing_beads[:4]
-    text = text + "\n[virtual_sitesn]\n"
-    text = text + "; site funct  constructing atom indices\n"
-    for vs, cb in virtual_sites.items():
-        if len(cb)>3: text = (text + "   {:d}       1     {:d} {:d} {:d} {:d}       \n".format(
-                                    vs, cb[0] + 1, cb[1] + 1, cb[2] + 1, cb[3] + 1
-                                )
-                            )
-        else: text = (text + "   {:d}       1     {:d} {:d} {:d}       \n".format(
-                                    vs, cb[0] + 1, cb[1] + 1, cb[2] + 1
-                                )
-                            )
-    return text, virtual_sites, vs_bead_coords
 
 def topout(header_write,atoms_write,bonds_write,angles_write):
     """Print simple itp file"""
     text=header_write +"\n"+ atoms_write + "\n" + bonds_write + "\n" + angles_write
 
-    #AutoM3 : bartender info search
+    #bartender info search
     bartender_input_info={}
     bartender_input_info["BONDS"]=[]
     for line in list(bonds_write.split("\n")):
-        if "1" in line:
-            x=line.split("   ")
-            bartender_input_info["BONDS"].append(x[1:3])
+        if ";" not in line and len(line.split())>4:
+            bartender_input_info["BONDS"].append(line.split()[:2])
     
     bartender_input_info["ANGLES"]=[]
     for line in list(angles_write.split("\n")):
-        if "1" in line:
-            x=line.split(" ")
-            bartender_input_info["ANGLES"].append(x[2:5])
+        if ";" not in line and len(line.split())>5:
+            bartender_input_info["ANGLES"].append(line.split()[:3])
     return text, bartender_input_info
 
 def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, bead_coords, ring_atoms, cg_beads): ### AutoM3 ###
@@ -1261,16 +1116,19 @@ def topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_
     bartender_input_info={}
     bartender_input_info["BONDS"]=[]
     for line in list(modified_bonds_write.split("\n")):
-        if "1" in line:
-            x=line.split("   ")
-            bartender_input_info["BONDS"].append(x[1:3])
+        if ";" not in line and len(line.split())>4:
+            bartender_input_info["BONDS"].append(line.split()[:2])
     
     bartender_input_info["ANGLES"]=[]
     for line in list(modified_angles_write.split("\n")):
-        if "2" in line:
-            x=line.split(" ")
-            bartender_input_info["ANGLES"].append(x[2:5])
-
+        if ";" not in line and len(line.split())>5:
+            bartender_input_info["ANGLES"].append(line.split()[:3])
+    
+    bartender_input_info["IMPROPERS"]=[]
+    for line in list(dihedrals_write.split("\n")): 
+        if ";" not in line and len(line.split())>6:
+            bartender_input_info["IMPROPERS"].append(line.split()[:4])
+    
     text = modified_header_write +"\n"+ atoms_write +"\n"+ modified_bonds_write +"\n"+ modified_angles_write +"\n"+ dihedrals_write+exclusions_net
     return text, bartender_input_info
 
@@ -1298,7 +1156,10 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                 if str(vs+1) == atom_line[0] and atom_line[7] != '0': 
                     vs_bead_names+=atom_line[1]
                     vs_mass[vs]=int(atom_line[7])
-                    modified_lines_atoms[i]=line.replace(atom_line[7]," 0")
+                    fields = line.split()
+                    comments = line.split('   ;   ')[1]
+                    modified_lines_atoms[i] = "   {:<5d}   {:5s}   1   {:5s}   {:7s}   {:<5d}   {:2d}     0   ;   {:24s}".format(
+                        int(fields[0]), fields[1],  str(fields[3]), fields[4], int(fields[5]), int(fields[6]), comments)
 
     for vs, cb in virtual_sites.items():
         for vs_env in cb:
@@ -1307,7 +1168,12 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
                     atom_line2 = line2.split()
                     if str(vs_env+1) == atom_line2[0]:
                         new_mass = int(int(atom_line2[7]) + vs_mass[vs] / len(cb) ) #add 1/cb mass of VS
-                        modified_lines_atoms[j]=line2.replace(atom_line2[7],str(new_mass))
+                        fields = line2.split()
+                        comments = line2.split('   ;   ')[1]
+                        modified_lines_atoms[j] = "   {:<5d}   {:5s}   1   {:5s}   {:7s}   {:<5d}   {:2d}   {:3d}   ;   {:24s}".format(
+                            int(fields[0]), fields[1],  str(fields[3]), fields[4], int(fields[5]), int(fields[6]),
+                            int(new_mass), comments
+)
     modified_atoms_write = "\n".join(modified_lines_atoms)
 
     modified_lines_header=[]
@@ -1415,6 +1281,13 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
     
 
     #bartender info search
+        
+    bartender_input_info["VSITES"]=[]
+    for line in list(vs_write.split("\n")):
+        if ";" not in line and len(line.split())>3:
+            info_vs = f"{line.split()[0]} {','.join(line.split()[2:])} 1"
+            bartender_input_info["VSITES"].append(info_vs)
+
     bartender_input_info["BONDS"]=[]
     for line in list(modified_bonds_write.split("\n")):
         if ";" not in line and len(line.split())>4:
@@ -1425,165 +1298,12 @@ def topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_wr
         if ";" not in line and len(line.split())>5:
             bartender_input_info["ANGLES"].append(line.split()[:3])
     
-    bartender_input_info["DIHEDRALS"]=[]
-    for line in list(dihedrals_write.split("\n")): # not modified_dihedrals_write because VS are not visible in bartender input
+    bartender_input_info["IMPROPERS"]=[]
+    for line in list(dihedrals_write.split("\n")): # not modified_dihedrals_write 
         if ";" not in line and len(line.split())>6:
-            bartender_input_info["DIHEDRALS"].append(line.split()[:4])
+            bartender_input_info["IMPROPERS"].append(line.split()[:4])
+
     text = modified_header_write +"\n"+ modified_atoms_write+"\n"+ modified_bonds_write+"\n"+ modified_angles_write+ "\n"+ modified_dihedrals_write + "\n"+ vs_write + exclusions_net
-    return text, vs_bead_names, bartender_input_info
-
-def topout_vs_dummy(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write, bead_coords): ### AutoM3 ###
-    """Archived AutoM3 : Prints whole .itp file with all bonded and nonbonded parameters. """
-    text = ""
-    bartender_input_info={}
-
-    #Atoms: add bead VS
-    modified_lines_atoms = []
-    molname=""
-    vs_bead_names=""
-    if len(virtual_sites)>1:vs_bead_names=[]
-    nb_beads=0
-    for line in list(atoms_write.split("\n")):
-        if line != "":
-            x = line.split("   ")
-            molname=x[5]
-            modified_lines_atoms.append(line)
-            nb_beads=int(x[1])
-    for vs, cb in virtual_sites.items():
-        if len(virtual_sites)<2: vs_bead_names=str("U"+str(vs))
-        else: vs_bead_names.append("U"+str(vs))
-        txt = "   {:<5d}   {:5s}   1   {:5s}    U{:<5d}   {:<5d}   {:2d}   {:3d}   ;   {:s}".format(
-                    vs, "U",        molname,  vs,   vs,   0,      0,        "virtual site",
-        )
-        modified_lines_atoms.append(txt)
-    modified_atoms_write = "\n".join(modified_lines_atoms)+ "\n"
-
-    modified_lines_header=[]
-    for line in list(header_write.split("\n")):
-        if ("  "+molname) not in line: modified_lines_header.append(line)
-        else:
-            lineH=line.split("         ")
-            txt=lineH[0]+"         1"
-            modified_lines_header.append(txt)
-    modified_header_write="\n".join(modified_lines_header)+ "\n"
-
-    #Adding force to constraints 
-    modified_lines_bonds=[]
-    for line in list(bonds_write.split("\n")):
-        if "1"in line and len(line.split("   "))<7: 
-            modified_lines_bonds.append(line+"    1000000")
-        else:modified_lines_bonds.append(line)
-        if line=="[constraints]":
-            if line in modified_lines_bonds: modified_lines_bonds.remove(line)
-            txt = "#ifndef FLEXIBLE\n[constraints]\n#endif"
-            modified_lines_bonds.append(txt)
-
-    #Remove constraints with bead that is directly below (or very close) VS to limit nb of constraints
-    for line in modified_lines_bonds:
-        for nb_bead, coord in enumerate(bead_coords):
-            closest_dist=float('inf')
-            closest_coord = None
-            closest_beads = {}
-            if nb_bead+1 in virtual_sites.keys(): 
-                vs_coord=coord
-                vs_bead=nb_bead
-                for nb_bead_noVS, coord_noVS in enumerate(bead_coords):
-                    x,y,z=coord_noVS
-                    dist= math.sqrt((x-vs_coord[0])**2 + (y-vs_coord[1])**2 + (z-vs_coord[2])**2)
-
-                    if dist < closest_dist and nb_bead_noVS+1 not in virtual_sites.keys() : # nb_bead_noVS!=vs_bead:
-                        closest_beads[nb_bead_noVS]=dist
-                        closest_dist=dist
-    closest_bead=list(dict(sorted(closest_beads.items(), key = lambda item: item[1])))[0]
-
-    if len(bead_coords)>5: # for larger molecules 
-        if len(virtual_sites)>1: #need to exclude more bonds if more than 1 VS,
-            for closest_bead in closest_beads.keys():
-                for line in modified_lines_bonds.copy():
-                    if len(line.split("   "))>3 and line.split("   ")[-1]==" 1000000" :
-                        if str(closest_bead+1) == line.split("   ")[1] or str(closest_bead+1) == line.split("   ")[2]:
-                            if line in modified_lines_bonds : modified_lines_bonds.remove(line)
-        else:
-            for line in modified_lines_bonds.copy():
-                if len(line.split("   "))>3 and line.split("   ")[-1]==" 1000000" :
-                    if str(closest_bead+1) == line.split("   ")[1] or str(closest_bead+1) == line.split("   ")[2]:
-                        if line in modified_lines_bonds : modified_lines_bonds.remove(line)
-
-    modified_bonds_write="\n".join(modified_lines_bonds)
-
-    #Clean angles already described by dihedrals 
-    modified_lines_angles = []
-    for lineA in list(angles_write.split("\n")):
-        if lineA not in modified_lines_angles: modified_lines_angles.append(lineA)
-        for lineD in list(dihedrals_write.split("\n")):
-            angle_line = lineA.split(" ")
-            dihed_line = lineD.split(" ")
-            if len(dihed_line)>2 and not lineD.startswith(";") and len(angle_line)>2 and not lineA.startswith(";"):
-                if angle_line[2] in dihed_line[2:6] and angle_line[3] in dihed_line[2:6] and angle_line[4] in dihed_line[2:6]:
-                    if lineA  in modified_lines_angles:modified_lines_angles.remove(lineA)
-    
-    #for larger molecules clean angles from interactions with beads dirctly below VS
-    if len(bead_coords)>5 :
-        if len(virtual_sites)>1: #need to exclude more bonds if more than 1 VS,
-            for cb in closest_beads:
-                for line in modified_lines_angles.copy():
-                    if len(line.split(" "))>3:
-                        if str(cb+1) == line.split(" ")[2] or str(cb+1) == line.split(" ")[3] or str(cb+1) == line.split(" ")[4] :
-                            if line in modified_lines_angles : modified_lines_angles.remove(line)
-        else: 
-            for line in modified_lines_angles.copy():
-                if len(line.split(" "))>3:
-                    if str(closest_bead+1) == line.split(" ")[2] or str(closest_bead+1) == line.split(" ")[3] or str(closest_bead+1) == line.split(" ")[4] :
-                        if line in modified_lines_angles : modified_lines_angles.remove(line)
-    modified_angles_write = "\n".join(modified_lines_angles)+ "\n"
-
-    #for larger molecules clean dihedrals from interactions with beads dirctly below VS
-    modified_lines_dihedrals=[]
-    for lineD in list(dihedrals_write.split("\n")):
-        modified_lines_dihedrals.append(lineD)
-
-    if len(bead_coords)>5 :
-        if len(virtual_sites)>1: #need to exclude more bonds if more than 1 VS,
-            for cb in closest_beads:
-                for line in modified_lines_dihedrals.copy():
-                    if len(line.split(" "))>4:
-                        if str(cb+1) == line.split(" ")[2] or str(cb+1) == line.split(" ")[3] or str(cb+1) == line.split(" ")[4] or str(cb+1) == line.split(" ")[5] :
-                            if line in modified_lines_dihedrals : modified_lines_dihedrals.remove(line)
-        else:
-            for line in modified_lines_dihedrals.copy():
-                if len(line.split(" "))>4:
-                    if str(closest_bead+1) == line.split(" ")[2] or str(closest_bead+1) == line.split(" ")[3] or str(closest_bead+1) == line.split(" ")[4] or str(closest_bead+1) == line.split(" ")[5] :
-                        if line in modified_lines_dihedrals : modified_lines_dihedrals.remove(line)
-    modified_dihedrals_write = "\n".join(modified_lines_dihedrals)+ "\n"
-
-    exclusions_net=""
-    exclusions_net = exclusions_net + "\n[exclusions]\n"
-    for i in range(1,nb_beads):
-        row = " ".join(map(str, range(i, nb_beads + 1)))
-        exclusions_net="   "+exclusions_net+row+"\n"
-    
-    exclusions_net=exclusions_net+"\n"
-
-        #bartender info search
-    bartender_input_info["BONDS"]=[]
-    for line in list(modified_bonds_write.split("\n")):
-        if "1" in line:
-            x=line.split("   ")
-            bartender_input_info["BONDS"].append(x[1:3])
-    
-    bartender_input_info["ANGLES"]=[]
-    for line in list(modified_angles_write.split("\n")):
-        if "2" in line:
-            x=line.split(" ")
-            bartender_input_info["ANGLES"].append(x[2:5])
-    
-    bartender_input_info["DIHEDRALS"]=[]
-    for line in list(modified_dihedrals_write.split("\n")):
-        if "2" in line:
-            x=line.split(" ")
-            bartender_input_info["DIHEDRALS"].append(x[2:6])
-        
-    text = modified_header_write + modified_atoms_write+ modified_bonds_write+ modified_angles_write+ modified_dihedrals_write + vs_write + exclusions_net
     return text, vs_bead_names, bartender_input_info
 
 def bartender_input(mol, molname, atoms_in_beads, bart_info_dict): ### AutoM3 ###
@@ -1617,9 +1337,14 @@ def bartender_input(mol, molname, atoms_in_beads, bart_info_dict): ### AutoM3 ##
         text+=str(bead)+" "+at_str+"\n"
     
     for tp, info in bart_info_dict.items():
-        text+='\n'+tp+'\n'
-        for i in info:
-            text+=f"{','.join(i)}\n"
+        if info:
+            text+=tp+'\n'
+            if tp=='VSITES':
+                for i in info:
+                    text+=f"{i}\n"
+            else:
+                for i in info:
+                    text+=f"{','.join(i)}\n"
     return text
 
 def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_file=None, trial=False): 

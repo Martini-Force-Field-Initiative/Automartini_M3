@@ -122,7 +122,7 @@ groname=args.molname+".gro"
 bartenderfname=""
 
 if args.bartender_output:
-    bartenderfname=args.molname+"_bartenderINPUT.dat"
+    bartenderfname=args.molname+"_bartender.inp"
     cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
 else:
     cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
