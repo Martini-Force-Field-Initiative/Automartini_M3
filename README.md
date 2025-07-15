@@ -140,7 +140,7 @@ In case no problem arises, it will output the gromacs ASP.itp file:
 The code will also output a corresponding `.gro` file for the coarse-grained coordinates.
 Atomistic coordinates can be written using the `--aa output.gro` option.
 
-If `--bartender` flag is used, additional file for further optimization of bonded parameters with Bartender (Pereira et al., 2024) will be produced. You will find more information about Bartender in the [tutorial](https://github.com/Martini-Force-Field-Initiative/Bartender.git). Examplary Bartender input file, created by Auto-MartiniM3 for aspirin and saved as ASP_bartender.inp : 
+If `--bartender` flag is used, additional file for further optimization of bonded parameters with Bartender [Pereira et al., 2024](10.1021/acs.jctc.4c00275) will be produced. You will find more information about Bartender in the [official tutorial](https://github.com/Martini-Force-Field-Initiative/Bartender.git). Examplary Bartender input file, created by Auto-MartiniM3 for aspirin and saved as ASP_bartender.inp : 
 ```
 # INPUT data for bonded parameter definition by BARTENDER for molecule ASP
 BEADS
