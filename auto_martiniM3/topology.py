@@ -511,7 +511,7 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
                 if len(molname)>4:molname=molname[:4]
                 text = (
                     text
-                    + "\n   {:<5d}   {:5s}   1   {:5s}   {:7s}   {:<5d}   {:2d}   {:3d}   ;   {:8s}{:8s}{:9s}".format(
+                    + "   {:<5d}   {:5s}   1   {:5s}   {:7s}   {:<5d}   {:2d}   {:3d}   ;   {:8s}{:8s}{:9s}\n".format(
                         bead + 1,
                         bead_type,
                         molname,
@@ -771,7 +771,7 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
             for a in angle_list:
                 force = read_params(a[3],beadlist[a[0]]+"-"+beadlist[a[1]]+"-"+beadlist[a[2]])
                 if force is None : force=a[4]
-                text = text + "  {:2} {:2} {:2}       1     {:<5.1f}   {:5.1f}\n".format(
+                text = text + "  {:2} {:2} {:2}       1    {:<5.1f}  {:5.1f}\n".format(
                     a[0] + 1, a[1] + 1, a[2] + 1, a[3], force
                 )
             text = text
@@ -878,7 +878,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
                 if force is None: force=d[5]
                 text = (
                     text
-                    + "  {:2} {:2} {:2} {:2}    2    {:5.1f}    {:5.1f}\n".format(
+                    + "  {:2} {:2} {:2} {:2}    2    {:<7.1f}  {:<7.1f}\n".format(
                         d[0] + 1, d[1] + 1, d[2] + 1, d[3] + 1, d[4], force
                     )
                 )
@@ -998,7 +998,7 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
             sinphi = np.dot(r2, np.cross(p1, p2))
             angle = 180.0 / math.pi * np.arctan2(sinphi, cosphi)
             force=100
-            new_dih="  {:2} {:2} {:2} {:2}    2    {:5.1f}    {:5.1f}".format(cb[0]+1,cb[1]+1,cb[2]+1,cb[3]+1, round(angle,2), force)
+            new_dih="  {:2} {:2} {:2} {:2}    2     {:<5.1f}   {:5.1f}".format(cb[0]+1,cb[1]+1,cb[2]+1,cb[3]+1, round(angle,2), force)
             rigid_dihedral.append(new_dih)
 
         if len(cb)==3:
