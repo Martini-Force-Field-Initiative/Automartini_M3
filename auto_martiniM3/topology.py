@@ -878,7 +878,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
                 if force is None: force=d[5]
                 text = (
                     text
-                    + "  {:2} {:2} {:2} {:2}    2    {:<7.1f}  {:<7.1f}\n".format(
+                    + "  {:2} {:2} {:2} {:2}    2    {:<5.1f}  {:5.1f}\n".format(
                         d[0] + 1, d[1] + 1, d[2] + 1, d[3] + 1, d[4], force
                     )
                 )
@@ -998,7 +998,7 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
             sinphi = np.dot(r2, np.cross(p1, p2))
             angle = 180.0 / math.pi * np.arctan2(sinphi, cosphi)
             force=100
-            new_dih="  {:2} {:2} {:2} {:2}    2     {:<5.1f}   {:5.1f}".format(cb[0]+1,cb[1]+1,cb[2]+1,cb[3]+1, round(angle,2), force)
+            new_dih="  {:2} {:2} {:2} {:2}    2    {:<5.1f}  {:5.1f}".format(cb[0]+1,cb[1]+1,cb[2]+1,cb[3]+1, round(angle,2), force)
             rigid_dihedral.append(new_dih)
 
         if len(cb)==3:
@@ -1513,25 +1513,25 @@ def determine_bead_type(delta_f, charge, hbonda, hbondd, in_ring, smi_frag): ###
         else:
             # all other cases. Simply find the atom type that's closest in
             # free energy.
-            halogens = ["Cl","Br","F","I"]
             
             if count_letters(str(smi_frag)) == 2:
                 othertypes = ["TP6","TP5","TP4","TP3","TP2","TP1","TC6","TC5","TC4","TC3","TC2","TC1","TN6","TN5","TN4","TN3","TN2","TN1"]
                 if not in_ring: othertypes.remove("TC5")
-                for hal in halogens: 
-                    if hal in str(smi_frag):
-                        othertypes = ["TX4","TX3","TX2","TX1"]
+
             if count_letters(str(smi_frag)) == 3:
                 othertypes = ["SP6","SP5","SP4","SP3","SP2","SP1","SC6","SC5","SC4","SC3","SC2","SC1","SN6","SN5","SN4","SN3","SN2","SN1"]
-                for hal in halogens: 
-                    if hal in str(smi_frag):
-                        othertypes = ["SX4","SX3","SX2","SX1"]
+
             if count_letters(str(smi_frag)) > 3:
                 othertypes = ["P6","P5","P4","P3","P2","P1","C6","C5","C4","C3","C2","C1","N6","N5","N4","N3","N2","N1"]
-                for hal in halogens: 
-                    if hal in str(smi_frag):
-                        othertypes = ["X4","X3","X2","X1"]
 
             bead_type=find_closest_logPvalue(delta_f, othertypes,in_ring)
             #logger.debug("closest type: %s; error %7.4f" % (bead_type, min_error))
+    
+    for hal in ["Cl","Br","F","I"]: 
+        if hal in str(smi_frag):
+            if count_letters(str(smi_frag)) == 2: othertypes = ["TX4","TX3","TX2","TX1"]
+            if count_letters(str(smi_frag)) == 3: othertypes = ["SX4","SX3","SX2","SX1"]
+            if count_letters(str(smi_frag)) > 3: othertypes = ["X4","X3","X2","X1"]
+            bead_type=find_closest_logPvalue(delta_f, othertypes,in_ring)
+    
     return bead_type

@@ -318,12 +318,21 @@ class Cg_molecule:
 
 
                 self.topout, bartender_input_info = topology.topout(header_write,atoms_write,bonds_write,angles_write) # AutoM3 change : possible simple output w/o dihedrals, virtual sites
-
+                
+                # check if fusion of cycles
+                common = False
+                if len(ring_atoms)>1:
+                    cpt = list(set.intersection(*map(set, ring_atoms)))
+                    if len(cpt)>1 : common=True
+                    for i in ring_atoms:
+                        if len(i)>6 : common=True
+                else:
+                    if len(ring_atoms_flat)>6 : common=True
 
                 ### AutoM3 outputs ###
 
                 if len(ring_atoms_flat)>0 and not simple_model:
-                    if len(ring_atoms_flat)>7:
+                    if len(ring_atoms_flat)>7 and common:
                         vs_write, virtual_sites, rigid_dih  = topology.print_virtualsites(ring_atoms,self.cg_bead_coords,self.atom_partitioning,molecule)
                         
                         self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,rigid_dih,simple_model)
