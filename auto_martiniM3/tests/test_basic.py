@@ -4,12 +4,13 @@ Basic sanity test for the auto_martini package.
 import filecmp
 import os
 from pathlib import Path
-from rdkit import Chem
+
 import pytest
+from rdkit import Chem
 
 import auto_martiniM3
 
-dpath = Path("tests/files")
+dpath = Path(__file__).resolve().parent / "files"
 
 
 def test_auto_martini_imported():
