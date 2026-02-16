@@ -1,7 +1,7 @@
-auto\_martini.optimization
+auto\_martiniM3.optimization
 ==========================
 
-.. automodule:: auto_martini.optimization
+.. automodule:: auto_martiniM3.optimization
 
    
    
@@ -17,7 +17,11 @@ auto\_martini.optimization
       gaussian_overlap
       penalize_lonely_atoms
       read_bead_params
-      voronoi_atoms
+      voronoi_atoms_old
+      voronoi_atoms_new
+      identify_functional_groups
+      functional_groups_ok
+      max2arperbead
    
    
 

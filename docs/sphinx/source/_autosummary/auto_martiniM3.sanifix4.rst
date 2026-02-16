@@ -1,7 +1,7 @@
-auto\_martini.sanifix4
+auto\_martiniM3.sanifix4
 ======================
 
-.. automodule:: auto_martini.sanifix4
+.. automodule:: auto_martiniM3.sanifix4
 
    
    

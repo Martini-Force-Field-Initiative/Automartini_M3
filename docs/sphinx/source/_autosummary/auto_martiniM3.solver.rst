@@ -1,7 +1,7 @@
-auto\_martini.solver
+auto\_martiniM3.solver
 ====================
 
-.. automodule:: auto_martini.solver
+.. automodule:: auto_martiniM3.solver
 
    
    

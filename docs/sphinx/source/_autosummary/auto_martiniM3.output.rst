@@ -1,7 +1,7 @@
-auto\_martini.output
+auto\_martiniM3.output
 ====================
 
-.. automodule:: auto_martini.output
+.. automodule:: auto_martiniM3.output
 
    
    

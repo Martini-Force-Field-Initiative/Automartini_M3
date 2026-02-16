@@ -1,0 +1,512 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>auto_martiniM3.topology &mdash; Auto-MartiniM3 0.0.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="Auto-MartiniM3 0.0.0 documentation" href="../index.html"/> 
+
+  
+  <script src="../static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Auto-MartiniM3
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <!-- Local TOC -->
+                <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">auto_martiniM3.topology</a></li>
+</ul>
+</div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Auto-MartiniM3</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>auto_martiniM3.topology</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/autosummary/auto_martiniM3.topology.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-auto_martiniM3.topology">
+<span id="auto-martiniM3-topology"></span><h1>auto_martiniM3.topology<a class="headerlink" href="#module-auto_martiniM3.topology" title="Permalink to this headline">¶</a></h1>
+<p>Created on March 13, 2019 by Andrew Abi-Mansour</p>
+<p>Updated on February 16, 2026 by Magdalena Szczuka</p>
+<p>This is the:</p>
+<div class="highlight-default notranslate">
+  <div class="highlight">
+    <pre>
+    _   _   _ _____ ___    __  __    _    ____ _____ ___ _   _ ___   __  __  _____
+   / \ | | | |_   _/ _ \  |  \/  |  / \  |  _ \_   _|_ _| \ | |_ _| |  \/  |___ / 
+  / _ \| | | | | || | | | | |\/| | / _ \ | |_) || |  | ||  \| || |  | |\/| | |_ \ 
+ / ___ \ |_| | | || |_| | | |  | |/ ___ \|  _ < | |  | || |\  || |  | |  | |___) |
+/_/   \_\___/  |_| \___/  |_|  |_/_/   \_\_| \_\|_| |___|_| \_|___| |_|  |_|____/
+    </pre>
+  </div>
+</div>
+</div>
+<p>Tool for automatic MARTINI M3FF mapping and parametrization of small organic molecules</p>
+<p>Developers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Magdalena</span> <span class="n">Szczuka</span> <span class="p">(</span><span class="n">magdalena</span><span class="o">.</span><span class="n">szczuka</span> <span class="n">at</span> <span class="n">utoulouse</span><span class="o">.</span><span class="n">fr</span><span class="p">)</span>
+<span class="n">Tristan</span> <span class="n">Bereau</span> <span class="p">(</span><span class="n">bereau</span> <span class="n">at</span> <span class="n">mpip</span><span class="o">-</span><span class="n">mainz</span><span class="o">.</span><span class="n">mpg</span><span class="o">.</span><span class="n">de</span><span class="p">)</span>
+<span class="n">Kiran</span> <span class="n">Kanekal</span> <span class="p">(</span><span class="n">kanekal</span> <span class="n">at</span> <span class="n">mpip</span><span class="o">-</span><span class="n">mainz</span><span class="o">.</span><span class="n">mpg</span><span class="o">.</span><span class="n">de</span><span class="p">)</span>
+<span class="n">Andrew</span> <span class="n">Abi</span><span class="o">-</span><span class="n">Mansour</span> <span class="p">(</span><span class="n">andrew</span><span class="o">.</span><span class="n">gaam</span> <span class="n">at</span> <span class="n">gmail</span><span class="o">.</span><span class="n">com</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>AUTO_MartiniM3 is open-source, distributed under the terms of the GNU Public
+License, version 2 or later. It is distributed in the hope that it will
+be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. You should have
+received a copy of the GNU General Public License along with PyGran.
+If not, see <a class="reference external" href="http://www.gnu.org/licenses">http://www.gnu.org/licenses</a> . See also top-level README
+and LICENSE files.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-center">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.bartender_input" title="auto_martiniM3.topology.bartender_input"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bartender_input</span></code></a>(mol,molname,atoms_in_beads,bart_info_dict)</p></td>
+<td><p>Print bartender input file</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.cyclic_smi_conversion" title="auto_martiniM3.topology.cyclic_smi_conversion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cyclic_smi_conversion</span></code></a>(smi)</p></td>
+<td><p>Convert SMILES to lowercase</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.convert_log_k" title="auto_martiniM3.topology.convert_log_k"><code class="xref py py-obj docutils literal notranslate"><span class="pre">convert_log_k</span></code></a>(log_k)</p></td>
+<td><p>Convert log_{10}K to free energy (in kJ/mol)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.determine_bead_type" title="auto_martiniM3.topology.determine_bead_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">determine_bead_type</span></code></a>(delta_f, charge, hbonda, …)</p></td>
+<td><p>Determine CG bead type from delta_f value, charge, and hbond acceptor, and donor</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.extract_features" title="auto_martiniM3.topology.extract_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_features</span></code></a>(molecule)</p></td>
+<td><p>Extract features of molecule</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.find_closest_key" title="auto_martiniM3.topology.find_closest_key"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_closest_key</span></code></a>(dictionary,target_value)</p></td>
+<td><p>Get key closest to input value</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.find_closest_logPvalue" title="auto_martiniM3.topology.find_closest_logPvalue"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_closest_logPvalue</span></code></a>(value,keyslist,in_ring)</p></td>
+<td><p>Get most suited bead type by comparing logP values</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.gen_molecule_sdf" title="auto_martiniM3.topology.gen_molecule_sdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_molecule_sdf</span></code></a>(sdf)</p></td>
+<td><p>Generate mol object from SD file</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.gen_molecule_smi" title="auto_martiniM3.topology.gen_molecule_smi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_molecule_smi</span></code></a>(smi)</p></td>
+<td><p>Generate mol object from smiles string</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.get_atoms" title="auto_martiniM3.topology.get_atoms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_atoms</span></code></a>(molecule)</p></td>
+<td><p>List all heavy atoms</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.get_charge" title="auto_martiniM3.topology.get_charge"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_charge</span></code></a>(molecule)</p></td>
+<td><p>Get net charge of molecule</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.get_hbond_a" title="auto_martiniM3.topology.get_hbond_a"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_hbond_a</span></code></a>(features)</p></td>
+<td><p>Get Hbond acceptor information</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.get_hbond_d" title="auto_martiniM3.topology.get_hbond_d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_hbond_d</span></code></a>(features)</p></td>
+<td><p>Get Hbond donor information</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.get_heavy_atom_coords" title="auto_martiniM3.topology.get_heavy_atom_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_heavy_atom_coords</span></code></a>(molecule)</p></td>
+<td><p>Extract atomic coordinates of heavy atoms in molecule mol</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.get_ring_atoms" title="auto_martiniM3.topology.get_ring_atoms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ring_atoms</span></code></a>(molecule)</p></td>
+<td><p>Get ring atoms</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.get_standard_mass" title="auto_martiniM3.topology.get_standard_mass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_standard_mass</span></code></a>(bead_type)</p></td>
+<td><p>Get standard bead mass</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.is_aromatic" title="auto_martiniM3.topology.is_aromatic"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_aromatic</span></code></a>(molecule)</p></td>
+<td><p>Check for aromatic atoms</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.letter_occurrences" title="auto_martiniM3.topology.letter_occurrences"><code class="xref py py-obj docutils literal notranslate"><span class="pre">letter_occurrences</span></code></a>(string)</p></td>
+<td><p>Count letter occurences</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.mad" title="auto_martiniM3.topology.mad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mad</span></code></a>(bead_type, delta_f[, in_ring])</p></td>
+<td><p>Mean absolute difference between type type and delta_f</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.print_angles" title="auto_martiniM3.topology.print_angles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_angles</span></code></a>(cgbeads, molecule, …)</p></td>
+<td><p>print CG angles in itp format</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.print_atoms" title="auto_martiniM3.topology.print_atoms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_atoms</span></code></a>(molname, forcepred, cgbeads, …)</p></td>
+<td><p>Print CG Atoms in itp format</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.print_bonds" title="auto_martiniM3.topology.print_bonds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_bonds</span></code></a>(cgbeads, molecule, partitioning, …)</p></td>
+<td><p>print CG bonds in itp format</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.print_dihedrals" title="auto_martiniM3.topology.print_dihedrals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_dihedrals</span></code></a>(cgbeads, constlist, …)</p></td>
+<td><p>Print CG dihedrals in itp format</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.print_header" title="auto_martiniM3.topology.print_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_header</span></code></a>(molname)</p></td>
+<td><p>Print topology header</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.print_virtualsites" title="auto_martiniM3.topology.print_virtualsites"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_virtualsites</span></code></a>(ringatoms,cgbead_coords, …)</p></td>
+<td><p>Print virtual sites</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.read_delta_f_types" title="auto_martiniM3.topology.read_delta_f_types"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_delta_f_types</span></code></a>()</p></td>
+<td><p>Returns delta_f types dictionary Measured octanol/water free energies from MartiniM3 Data used TI, not partitioning of Marrink et al.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.read_params" title="auto_martiniM3.topology.read_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_params</span></code></a>(val, size)</p></td>
+<td><p>Returns closest force value to given parameter, from MAD (https://mad.ibcp.fr)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#auto_martiniM3.topology.smi2alogps" title="auto_martiniM3.topology.smi2alogps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">smi2alogps</span></code></a>(forcepred, smi, wc_log_p, bead[, …])</p></td>
+<td><p>Returns water/octanol partitioning free energy according to ALOGPS</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#auto_martiniM3.topology.substruct2smi" title="auto_martiniM3.topology.substruct2smi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">substruct2smi</span></code></a>(molecule, partitioning, …)</p></td>
+<td><p>Substructure to smiles conversion; also output Wildman-Crippen log_p; and charge of group.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="auto_martiniM3.topology.bartender_input">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">bartender_input</code><span class="sig-paren">(</span><em>mol</em>, <em>molname</em>, <em>atoms_in_beads</em>,<em>bart_info_dict</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.bartender_input" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print bartender input file</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.cyclic_smi_conversion">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">cyclic_smi_conversion</code><span class="sig-paren">(</span><em>smi</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.cyclic_smi_conversion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert SMILES to lowercase</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.convert_log_k">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">convert_log_k</code><span class="sig-paren">(</span><em>log_k</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.convert_log_k" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert log_{10}K to free energy (in kJ/mol)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.determine_bead_type">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">determine_bead_type</code><span class="sig-paren">(</span><em>delta_f</em>, <em>charge</em>, <em>hbonda</em>, <em>hbondd</em>, <em>in_ring</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.determine_bead_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine CG bead type from delta_f value, charge,
+and hbond acceptor, and donor</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.extract_features">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">extract_features</code><span class="sig-paren">(</span><em>molecule</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.extract_features" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract features of molecule</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.find_closest_key">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">find_closest_key</code><span class="sig-paren">(</span><em>dictionary</em>, <em>target_value</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.find_closest_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get key closest to input value</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.find_closest_logPvalue">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">find_closest_logPvalue</code><span class="sig-paren">(</span><em>value</em>, <em>keyslist</em>, <em>in_ring</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.find_closest_logPvalue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get most suited bead type by comparing logP values</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.gen_molecule_sdf">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">gen_molecule_sdf</code><span class="sig-paren">(</span><em>sdf</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.gen_molecule_sdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate mol object from SD file</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.gen_molecule_smi">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">gen_molecule_smi</code><span class="sig-paren">(</span><em>smi</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.gen_molecule_smi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate mol object from smiles string</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.get_atoms">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">get_atoms</code><span class="sig-paren">(</span><em>molecule</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.get_atoms" title="Permalink to this definition">¶</a></dt>
+<dd><p>List all heavy atoms</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.get_charge">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">get_charge</code><span class="sig-paren">(</span><em>molecule</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.get_charge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get net charge of molecule</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.get_hbond_a">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">get_hbond_a</code><span class="sig-paren">(</span><em>features</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.get_hbond_a" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get Hbond acceptor information</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.get_hbond_d">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">get_hbond_d</code><span class="sig-paren">(</span><em>features</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.get_hbond_d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get Hbond donor information</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.get_heavy_atom_coords">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">get_heavy_atom_coords</code><span class="sig-paren">(</span><em>molecule</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.get_heavy_atom_coords" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract atomic coordinates of heavy atoms in molecule mol</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.get_ring_atoms">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">get_ring_atoms</code><span class="sig-paren">(</span><em>molecule</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.get_ring_atoms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get ring atoms</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.get_standard_mass">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">get_standard_mass</code><span class="sig-paren">(</span><em>bead_type</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.get_standard_mass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get standard bead mass</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.is_aromatic">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">is_aromatic</code><span class="sig-paren">(</span><em>molecule</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.is_aromatic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check for aromatic atoms</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.letter_occurrences">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">letter_occurrences</code><span class="sig-paren">(</span><em>string</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.letter_occurrences" title="Permalink to this definition">¶</a></dt>
+<dd><p>Count letter occurences</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.mad">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">mad</code><span class="sig-paren">(</span><em>bead_type</em>, <em>delta_f</em>, <em>in_ring=False</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.mad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mean absolute difference between type type and delta_f</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.print_angles">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">print_angles</code><span class="sig-paren">(</span><em>cgbeads</em>, <em>molecule</em>, <em>partitioning</em>, <em>cgbead_coords</em>, <em>bondlist</em>, <em>constlist</em>, <em>ringatoms</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.print_angles" title="Permalink to this definition">¶</a></dt>
+<dd><p>print CG angles in itp format</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.print_atoms">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">print_atoms</code><span class="sig-paren">(</span><em>molname</em>, <em>forcepred</em>, <em>cgbeads</em>, <em>molecule</em>, <em>hbonda</em>, <em>hbondd</em>, <em>partitioning</em>, <em>ringatoms</em>, <em>ringatoms_flat</em>, <em>trial=False</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.print_atoms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print CG Atoms in itp format</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.print_bonds">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">print_bonds</code><span class="sig-paren">(</span><em>cgbeads</em>, <em>molecule</em>, <em>partitioning</em>, <em>cgbead_coords</em>, <em>ringatoms</em>, <em>trial=False</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.print_bonds" title="Permalink to this definition">¶</a></dt>
+<dd><p>print CG bonds in itp format</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.print_dihedrals">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">print_dihedrals</code><span class="sig-paren">(</span><em>cgbeads</em>, <em>constlist</em>, <em>ringatoms</em>, <em>cgbead_coords</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.print_dihedrals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print CG dihedrals in itp format</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.print_header">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">print_header</code><span class="sig-paren">(</span><em>molname</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.print_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print topology header</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.print_virtualsites">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">print_virtualsites</code><span class="sig-paren">(</span><em>ringatoms</em>, <em>cgbead_coords</em>, <em>partitioning</em>, <em>mol</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.print_virtualsites" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print virtual sites</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.read_delta_f_types">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">read_delta_f_types</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.read_delta_f_types" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns delta_f types dictionary
+Measured octanol/water free energies from MartiniM3
+Data used TI, not partitioning of Marrink et al. JPCB 2007</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.read_params">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">read_params</code><span class="sig-paren">(</span><em>val</em>,<em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.read_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns closest force value to given parameter, from MAD (https://mad.ibcp.fr)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.smi2alogps">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">smi2alogps</code><span class="sig-paren">(</span><em>forcepred</em>, <em>smi</em>, <em>wc_log_p</em>, <em>bead</em>, <em>trial=False</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.smi2alogps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns water/octanol partitioning free energy
+according to ALOGPS</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="auto_martiniM3.topology.substruct2smi">
+<code class="descclassname">auto_martiniM3.topology.</code><code class="descname">substruct2smi</code><span class="sig-paren">(</span><em>molecule</em>, <em>partitioning</em>, <em>cg_bead</em>, <em>cgbeads</em>, <em>ringatoms</em><span class="sig-paren">)</span><a class="headerlink" href="#auto_martiniM3.topology.substruct2smi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Substructure to smiles conversion; also output Wildman-Crippen log_p;
+and charge of group.</p>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright  .
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE: 'true'
+        };
+    </script>
+      <script type="text/javascript" src="../static/jquery.js"></script>
+      <script type="text/javascript" src="../static/underscore.js"></script>
+      <script type="text/javascript" src="../static/doctools.js"></script>
+      <script type="text/javascript" src="../static/language_data.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
