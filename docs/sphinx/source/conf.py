@@ -18,12 +18,12 @@ sys.path.insert(0, os.path.abspath("../../../src"))
 
 # -- Project information -----------------------------------------------------
 
-project = "Auto-Martini"
+project = "Auto-MartiniM3"
 copyright = " "
-author = "Tristan Bereau, Kiran Kanekal, Andrew Abi-Mansour"
+author = "Magdalena Szczuka, Tristan Bereau, Kiran Kanekal, Andrew Abi-Mansour"
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.2"
+release = "0.0.0"
 
 # -- General configuration ------------------------------------------------
 autoclass_content = "both"  # include both class docstring and __init__
