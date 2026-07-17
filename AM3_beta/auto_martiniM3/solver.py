@@ -103,7 +103,7 @@ class Cg_molecule:
         self.cg_bead_coords = new_coords
         return  self.cg_bead_coords
 
-    def __init__(self, molecule, mol_smi, molname, simple_model, topfname, bartenderfname, bartender, logp_file, from_pdb=None, forcepred=True):
+    def __init__(self, molecule, mol_smi, molname, simple_model, topfname, bartenderfname, bartender, logp_file, from_pdb=None, forcepred=True, scaleup=False):
         # AutoM3 new arguments : mol_smi, simple_model, bartenderfname, bartender, logp_file
 
         self.heavy_atom_coords = None
@@ -126,7 +126,7 @@ class Cg_molecule:
             molecule = Chem.Mol(molecule)
             AllChem.EmbedMolecule(molecule)
             AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
-            #AllChem.NormalizeDepiction(molecule, scaleFactor=1.25) 
+            if scaleup:AllChem.NormalizeDepiction(molecule, scaleFactor=1.25) 
         
         else: AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
 
@@ -355,7 +355,7 @@ class Cg_molecule:
                 if len(ring_atoms_flat)>0 and not simple_model:
                     rigid_dih=None
                     if len(ring_atoms_flat)>8:
-                        if common: vs_write, virtual_sites, rigid_dih  = topology.print_virtualsites(ring_atoms,self.cg_bead_coords,self.atom_partitioning,molecule)
+                        if common: vs_write, virtual_sites, rigid_dih  = topology.print_virtualsites(ring_atoms,self.cg_bead_coords,self.atom_partitioning,molecule,dihedrals_write)
                         else: vs_write, virtual_sites, dihedrals_write, atoms_write, self.cg_bead_coords, self.cg_bead_names  = topology.print_dummyVS(molname,self.cg_bead_names, ring_atoms,cg_beads_rings,self.cg_bead_coords,atoms_write)
                         self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write, self.cg_bead_coords,rigid_dih=rigid_dih,simple_model=simple_model)
                     

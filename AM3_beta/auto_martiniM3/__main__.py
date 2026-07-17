@@ -89,6 +89,7 @@ parser.add_argument("--bartender",dest="bartender_output",action="store_true",re
 parser.add_argument("--simple",dest="simple_model",action="store_true",required=False,help="Simple model without dihedrals nor virtual sites") #AutoM3 change
 parser.add_argument("--canon",dest="canonic_smiles",action="store_true",required=False,help="Translate to RdKit canon structure") #AutoM3 change
 parser.add_argument("--viz",dest="visual_mapping_output",action="store_true",required=False,help="Output visual representation of mapping") #AutoM3 change
+parser.add_argument("--scaleup",dest="scaleup",action="store_true",required=False,help="Increase molecule's size (distances between atoms) by 25%") #AutoM3 change
 
 if len(sys.argv) == 1:
     parser.print_help(sys.stderr)
@@ -134,7 +135,7 @@ bartenderfname=""
 if args.bartender_output:
     bartenderfname=args.molname+"_bartender.inp"
 
-cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.pdb, args.forcepred)
+cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.pdb, args.forcepred, args.scaleup)
 
 if args.aa:
     cg.output_aa(args.aa)

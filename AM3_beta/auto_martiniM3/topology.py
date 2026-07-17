@@ -827,14 +827,12 @@ def print_angles(cgbeads, molecule, partitioning, cgbead_coords, beadtypes, bond
 
         if len(angle_list) > 0:
             text = text + "\n[angles]\n"
-            text = text + ";  i   j   k  funct  angle  force.c.\n"
+            text = text + "; i  j  k  funct  angle  force.c.\n"
             for a in angle_list:
                 force = read_params(a[3],beadlist[a[0]]+"-"+beadlist[a[1]]+"-"+beadlist[a[2]])
                 if force is None : force=a[4]
                 #text = text + "  {:2} {:2} {:2}       1    {:<5.1f}  {:5.1f}\n".format(a[0] + 1, a[1] + 1, a[2] + 1, a[3], force)
-                text = text + "{:4d}{:4d}{:4d}{:5d}{:8.1f}{:8.1f}\n".format(
-                        a[0] + 1, a[1] + 1, a[2] + 1,1, a[3], force
-                )
+                text = text + "{:3d}{:3d}{:3d}{:5d}{:8.1f}{:8.1f}\n".format(a[0] + 1, a[1] + 1, a[2] + 1,1, a[3], force)
             text = text
     return text, angle_list
 
@@ -923,7 +921,7 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
         new_dihed_list=dihed_list
         if len(dihed_list) > 0:
             text = text + "\n[dihedrals]\n"
-            text = text + ";  i   j   k   l  funct   angle  force.c.\n"
+            text = text + "; i  j  k  l  funct  angle  force.c.   mult \n"
 
             for dl in dihed_list:
                 for di in dihed_list[1:]:
@@ -940,13 +938,13 @@ def print_dihedrals(cgbeads, constlist, ringatoms, cgbead_coords, beadtypes):
                 force=10.0
                 text = (
                     text
-                    + "{:4d}{:4d}{:4d}{:4d}{:4d}{:8.1f}{:8.1f}\n".format(
+                    + "{:3d}{:3d}{:3d}{:3d}{:4d}{:8.1f}{:8.1f}\n".format(
                         d[0] + 1, d[1] + 1, d[2] + 1, d[3] + 1, 2, d[4], force
                     )
                 )
     return text
 
-def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 ###
+def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol,dihedrals_write): ### AutoM3 ###
     """
     Introduced in AutoM3.
     Prints CG virtual sites in itp format.
@@ -1050,19 +1048,34 @@ def print_virtualsites(ringatoms,cg_bead_coords,partitionning,mol): ### AutoM3 #
             j=cb[1]
             k=cb[2]
             l=cb[3]
-            r1 = cg_bead_coords[j] - cg_bead_coords[i]
-            r2 = cg_bead_coords[k] - cg_bead_coords[j]
-            r3 = cg_bead_coords[l] - cg_bead_coords[k]
-            p1 = np.cross(r1, r2) / (np.linalg.norm(r1) * np.linalg.norm(r2))
-            p2 = np.cross(r2, r3) / (np.linalg.norm(r2) * np.linalg.norm(r3))
-            r2 /= np.linalg.norm(r2)
-            cosphi = np.dot(p1, p2)
-            sinphi = np.dot(r2, np.cross(p1, p2))
-            angle = 180.0 / math.pi * np.arctan2(sinphi, cosphi)
-            force=100
-            # new_dih="  {:2} {:2} {:2} {:2}    2    {:<5.1f}  {:5.1f}".format(cb[0]+1,cb[1]+1,cb[2]+1,cb[3]+1, round(angle,2), force) #old formatting
-            new_dih="{:4d}{:4d}{:4d}{:4d}{:4d}{:8.1f}{:8.1f}".format(cb[0]+1,cb[1]+1,cb[2]+1,cb[3]+1, 2,round(angle,2), force)
-            rigid_dihedral.append(new_dih)
+
+            # check if dihedral doesn't exist already 
+            create_dih = True
+            for line in list(dihedrals_write.split("\n")):
+                if line !="":
+                    dihed_line = line.split()
+                    if len(dihed_line)>2 and not line.startswith(";"):
+                        print(f"dihedrals already exists : {dihed_line[:4]}")
+                        if (str(i+1) in dihed_line[:4]) and (str(j+1) in dihed_line[:4]) and (str(k+1) in dihed_line[:4])and (str(l+1) in dihed_line[:4]):
+                            create_dih = False
+                            print(f"dihedral from constructors already exists!")
+                            break
+            if not create_dih:
+                new_dih=None
+            
+            else:
+                r1 = cg_bead_coords[j] - cg_bead_coords[i]
+                r2 = cg_bead_coords[k] - cg_bead_coords[j]
+                r3 = cg_bead_coords[l] - cg_bead_coords[k]
+                p1 = np.cross(r1, r2) / (np.linalg.norm(r1) * np.linalg.norm(r2))
+                p2 = np.cross(r2, r3) / (np.linalg.norm(r2) * np.linalg.norm(r3))
+                r2 /= np.linalg.norm(r2)
+                cosphi = np.dot(p1, p2)
+                sinphi = np.dot(r2, np.cross(p1, p2))
+                angle = 180.0 / math.pi * np.arctan2(sinphi, cosphi)
+                force=100
+                new_dih="{:3d}{:3d}{:3d}{:3d}{:4d}{:8.1f}{:8.1f}".format(cb[0]+1,cb[1]+1,cb[2]+1,cb[3]+1, 2,round(angle,2), force)
+                rigid_dihedral.append(new_dih)
 
         if len(cb)==3:
             text = (text + "\n   {:d}       1     {:d} {:d} {:d}".format(
@@ -1109,18 +1122,30 @@ def print_dummyVS(molname,beadnames,ringatoms,cg_beads,cg_bead_coords,atoms_writ
     text = text + "; site funct  constructing atom indices"
 
     dih_text = dih_text + "\n[dihedrals]\n"
-    dih_text = dih_text + ";  i   j   k   l  funct   angle  force.c.   mult \n"
+    dih_text = dih_text + "; i  j  k  l  funct  angle  force.c.   mult \n"
     
     # Find improper dihedral from constructing beads for maintaining rigidity of cycles
     for vs, cb in virtual_sites.items():
         if len(cb)>=3:
+            if len(cb) > 3:
+                vs_coord = cg_bead_coords[vs -1]
+                cg_sorted_by_dist = sorted(
+                    cb, key=lambda bead_idx: np.linalg.norm(cg_bead_coords[bead_idx]-vs_coord)
+                )
+                chosen_cb = cg_sorted_by_dist[:3]
+            else:
+                chosen_cb = cb
             text = (text + "\n   {:d}       1     {:d} {:d} {:d}".format(
-                                    vs, cb[0] + 1, cb[1] + 1, cb[2] + 1
+                                    vs, chosen_cb[0] + 1, chosen_cb[1] + 1, chosen_cb[2] + 1
                                 )
                             )
             # write dihedral block
-            #dih_text = dih_text + "  {:2} {:2} {:2} {:2}    2    {:<5.1f}  {:5.1f}\n".format(cb[0]+1,cb[1]+1,cb[2]+1,vs, 0, 10.0) # old formatting
-            dih_text = dih_text + "{:4d}{:4d}{:4d}{:4d}{:4d}{:8.1f}{:8.1f}\n".format(cb[0]+1,cb[1]+1,cb[2]+1,vs,2,0,10.0)
+            dih_text = dih_text + "{:3d}{:3d}{:3d}{:3d}{:4d}{:8.1f}{:8.1f}\n".format(chosen_cb[0]+1,chosen_cb[1]+1,chosen_cb[2]+1,vs,2,0,10.0)
+        else:
+            text = (text + "\n   {:d}       1     {:d} {:d}".format(
+                                    vs, cb[0] + 1, cb[1] + 1
+                                )
+                            )    
     # Find proper dihedral from VS beads and one constructing bead of each VS for maintaining planarity
     vs_cb_pairs = None
 
@@ -1146,8 +1171,7 @@ def print_dummyVS(molname,beadnames,ringatoms,cg_beads,cg_bead_coords,atoms_writ
             angle_jkl = 180.0 / math.pi * math.acos(np.dot(r2_2,r3) / (np.linalg.norm(r2_2) * np.linalg.norm(r3)))
             if angle_ijk<145.0 and angle_jkl<145.0 : # look Restricted bending potential in gromacs manual
                 # write dihedral block
-                #dih_text = dih_text +"  {:2} {:2} {:2} {:2}    9    {:<5.1f}  {:5.1f}       1 ; control planarity \n".format(i+1,j+1,k+1,l+1, angle, 10.0)
-                dih_text = dih_text +"{:4d}{:4d}{:4d}{:4d}{:4d}{:8.1f}{:8.1f}       1 ; control planarity\n".format(i+1,j+1,k+1,l+1,9,angle,10.0)
+                dih_text = dih_text +"{:3d}{:3d}{:3d}{:3d}{:4d}{:8.1f}{:8.1f}       1 ; control planarity\n".format(i+1,j+1,k+1,l+1,9,angle,10.0)
 
     # add VS beads to atom description block 
     modified_lines_atoms = list(atoms_write.split("\n"))
@@ -1155,7 +1179,7 @@ def print_dummyVS(molname,beadnames,ringatoms,cg_beads,cg_bead_coords,atoms_writ
     i=1
     for vs, cb in virtual_sites.items():
         vs_line = "   {:<5d}   {:5s}   1   {:5s}   {:7s}   {:<5d}   {:2d}     0   ;   {:24s}".format(
-                        int(vs), "U",  molname[:4], f"U{i}", int(vs), 0, "; dummy VS for cycle rigidity")
+                        int(vs), "U",  molname[:4], f"U{i}", int(vs), 0, " dummy VS for cycle rigidity")
         modified_lines_atoms.append(vs_line)
         beadnames.append(f"U{i}")
         i+=1
