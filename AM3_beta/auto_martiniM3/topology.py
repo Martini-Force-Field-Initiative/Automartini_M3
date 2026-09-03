@@ -479,7 +479,8 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
     text = ""
     atoms_in_smi_dict={}
     mapping=[]
-
+    logporigin=""
+    
     for bead in range(len(cgbeads)):
         # Determine SMI of substructure
         try:
