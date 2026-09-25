@@ -27,12 +27,11 @@ If not, see http://www.gnu.org/licenses . See also top-level README
 and LICENSE files.
 """
 
-import numpy
-from Cython.Build import cythonize
-
-
 def build(setup_kwargs):
-    setup_kwargs.update(
-        ext_modules=cythonize(["auto_martiniM3/optimization.pyx"]),
-        include_dirs=numpy.get_include(),
-    )
+    # optimization.pyx is a stale, pre-AutoM3 fork of optimization.py: different
+    # bead-energy constants and an incompatible function API (no force_map, no
+    # min_beads, older check_beads/voronoi_atoms signatures). A compiled .so
+    # shadows the .py module of the same name on import, so building it here
+    # would silently swap in the wrong physics. Left un-built until someone
+    # updates it to match optimization.py.
+    pass

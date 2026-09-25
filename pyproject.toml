@@ -31,10 +31,6 @@ packages = [
 exclude = [
   "*/tests/"
 ]
-include = [
-  {path = "auto_martiniM3/optimization.pyx", format = "wheel"},
-  {path = "auto_martiniM3/*.so", format = "wheel"},
-]
 description = "A tool for automatic MARTINI 3 force field mapping and parametrization of small organic molecules"
 authors = ["Magdalena Szczuka", "Tristan Bereau", "Andrew Abi-Mansour"]
 classifiers = [
