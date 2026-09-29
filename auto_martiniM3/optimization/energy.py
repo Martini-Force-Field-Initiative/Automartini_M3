@@ -67,7 +67,7 @@ def atoms_in_gaussian(molecule, conformer, bead_id, ringatoms):
     return bead_params["at_in_bd_coeff"] * weight_sum, lumped_atoms
 
 
-def penalize_lonely_atoms(molecule, conformer, lumped_atoms):
+def penalize_lonely_atoms(molecule, conformer, lumped_atoms, masses=None):
     """Penalizes configuration if atoms aren't included
     in any CG bead"""
     logger.debug("Entering penalize_lonely_atoms()")
@@ -77,13 +77,48 @@ def penalize_lonely_atoms(molecule, conformer, lumped_atoms):
     lumped_atoms_set = set(int(a) for a in lumped_atoms)
     for i in range(num_atoms):
         if i not in lumped_atoms_set:
-            weight_sum += molecule.GetAtomWithIdx(i).GetMass()
+            weight_sum += masses[i] if masses is not None else molecule.GetAtomWithIdx(i).GetMass()
     return bead_params["lonely_atom_penalize"] * weight_sum
 
 
-def eval_gaussian_interac(molecule, conformer, list_beads, ringatoms):
+class GaussianTermCache:
+    """Memoizes, for one molecule/conformer/ring-atom set, the terms of
+    eval_gaussian_interac() that only depend on the atoms involved: the overlap
+    of a bead pair, the atoms lumped into a bead, and the atomic masses.
+
+    find_bead_pos() scores thousands of trial combinations built from the same
+    ~20 heavy atoms, so without this the same few hundred terms get recomputed
+    tens of thousands of times. Each cached value comes from the very same
+    function call on the very same inputs, so results are unchanged.
+    """
+
+    def __init__(self, molecule, conformer, ringatoms):
+        self.molecule = molecule
+        self.conformer = conformer
+        self.ringatoms = ringatoms
+        self.masses = [molecule.GetAtomWithIdx(i).GetMass() for i in range(conformer.GetNumAtoms())]
+        self._overlap = {}
+        self._in_gaussian = {}
+
+    def overlap(self, bead1, bead2):
+        key = (int(bead1), int(bead2))
+        if key not in self._overlap:
+            self._overlap[key] = gaussian_overlap(self.conformer, bead1, bead2, self.ringatoms)
+        return self._overlap[key]
+
+    def in_gaussian(self, bead_id):
+        key = int(bead_id)
+        if key not in self._in_gaussian:
+            self._in_gaussian[key] = atoms_in_gaussian(self.molecule, self.conformer, bead_id, self.ringatoms)
+        return self._in_gaussian[key]
+
+
+def eval_gaussian_interac(molecule, conformer, list_beads, ringatoms, cache=None):
     """From collection of CG beads placed on mol, evaluate
-    objective function of interacting beads"""
+    objective function of interacting beads.
+
+    cache: optional GaussianTermCache built for this same molecule, conformer
+    and ringatoms, to reuse per-bead and per-pair terms across many calls."""
     logger.debug("Entering eval_gaussian_interac()")
 
     weight_sum = 0.0
@@ -110,15 +145,21 @@ def eval_gaussian_interac(molecule, conformer, list_beads, ringatoms):
     # Repulsive overlap between CG beads
     for i in range(num_beads - 1):
         for j in range(i + 1, num_beads):
-            weight_overlap += gaussian_overlap(
-                conformer, list_beads_array[i], list_beads_array[j], ringatoms
-            )
+            if cache is not None:
+                weight_overlap += cache.overlap(list_beads_array[i], list_beads_array[j])
+            else:
+                weight_overlap += gaussian_overlap(
+                    conformer, list_beads_array[i], list_beads_array[j], ringatoms
+                )
     weight_sum += weight_overlap
 
     # Attraction between atoms nearby to CG bead
     lumped_atoms_seen = set()
     for i in range(num_beads):
-        weight, lumped = atoms_in_gaussian(molecule, conformer, list_beads_array[i], ringatoms)
+        if cache is not None:
+            weight, lumped = cache.in_gaussian(list_beads_array[i])
+        else:
+            weight, lumped = atoms_in_gaussian(molecule, conformer, list_beads_array[i], ringatoms)
         weight_at_in_bd += weight
         for a in lumped:
             if a not in lumped_atoms_seen:
@@ -126,6 +167,7 @@ def eval_gaussian_interac(molecule, conformer, list_beads, ringatoms):
                 lumped_atoms.append(a)
     weight_sum += weight_at_in_bd
     # Penalty for excluding atoms
-    weight_lonely_atoms = penalize_lonely_atoms(molecule, conformer, lumped_atoms)
+    masses = cache.masses if cache is not None else None
+    weight_lonely_atoms = penalize_lonely_atoms(molecule, conformer, lumped_atoms, masses)
     weight_sum += weight_lonely_atoms
     return weight_sum

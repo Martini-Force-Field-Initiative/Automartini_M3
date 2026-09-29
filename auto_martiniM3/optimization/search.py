@@ -10,7 +10,7 @@ returns every valid combination sorted by score.
 
 from ..common import *
 from .. import topology
-from .energy import eval_gaussian_interac
+from .energy import GaussianTermCache, eval_gaussian_interac
 from .partition import _heavy_neighbor_map, voronoi_atoms_new, voronoi_atoms_old
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def check_beads(
         if val != 1:
             all_different = False
             acceptable_trial = False
-            logger.debug("Error. Multiple beads on the same atom position for %s" % trial_comb)
+            logger.debug("Error. Multiple beads on the same atom position for %s", trial_comb)
             break
     if all_different:
         acceptable_trial = True
@@ -72,13 +72,13 @@ def check_beads(
                             bond_in_ring = True
                     if not bond_in_ring:
                         acceptable_trial = False
-                        logger.debug("Error. No bond in ring for %s" % trial_comb)
+                        logger.debug("Error. No bond in ring for %s", trial_comb)
                         break
         if acceptable_trial:
             # Don't allow bonds between atoms of the same ring.
             for bir in range(len(bonds_in_rings)):
                 if bonds_in_rings[bir] > 0:
-                    logger.debug("Error. Bonds between atoms of the same ring for %s" % trial_comb)
+                    logger.debug("Error. Bonds between atoms of the same ring for %s", trial_comb)
                     acceptable_trial = False
         if acceptable_trial:
             # Check for two terminal beads linked by only one atom
@@ -95,8 +95,8 @@ def check_beads(
                         if partneri == partnerj:
                             acceptable_trial = False
                             logger.debug(
-                                "Error. Two terminal beads linked to the same atom for %s"
-                                % trial_comb
+                                "Error. Two terminal beads linked to the same atom for %s",
+                                trial_comb,
                             )
     return acceptable_trial
 
@@ -193,6 +193,7 @@ def find_bead_pos(
     # Indexing a numpy array keeps trial_comb elements the same type (np.int64)
     # as the original np.array(list(itertools.combinations(...))) rows.
     heavy_atoms_array = np.array(list_heavy_atoms)
+    energy_cache = GaussianTermCache(molecule, conformer, ringatoms_flat)
 
     # Min/max number of beads: in Martini 3, a bead covers 2 to 4 heavy atoms.
     max_beads = int(len(list_heavy_atoms) / 2.0)
@@ -223,7 +224,9 @@ def find_bead_pos(
             trial_comb = list(heavy_atoms_array[list(positions)])
 
             # Do the energy evaluation
-            trial_ene = eval_gaussian_interac(molecule, conformer, trial_comb, ringatoms_flat)
+            trial_ene = eval_gaussian_interac(
+                molecule, conformer, trial_comb, ringatoms_flat, cache=energy_cache
+            )
             combs.append(trial_comb)
             energies.append(trial_ene)
 
@@ -281,7 +284,7 @@ def all_atoms_in_beads_connected(
         voronoi, _  = voronoi_atoms_new(cgbead_coords, heavyatom_coords, allatom_coords, mol, heavy_neighbor_of)
     else:
         voronoi, _  = voronoi_atoms_old(cgbead_coords, heavyatom_coords, allatom_coords, mol, heavy_neighbor_of)
-    logger.debug("voronoi %s" % voronoi)
+    logger.debug("voronoi %s", voronoi)
 
     # Precompute, once per trial_comb, per-region atom counts and per-region
     # counts of bonds fully contained within that region: the double loop
@@ -300,7 +303,7 @@ def all_atoms_in_beads_connected(
         num_atoms = region_size[region]
         num_bonds = same_region_bond_count[region]
         if num_bonds < num_atoms - 1 or num_atoms == 1:
-            logger.debug("Error: Not all atoms in beads connected in %s" % trial_comb)
-            logger.debug("Error: %s < %s" % (num_bonds, num_atoms - 1))
+            logger.debug("Error: Not all atoms in beads connected in %s", trial_comb)
+            logger.debug("Error: %s < %s", num_bonds, num_atoms - 1)
             return False
     return True
