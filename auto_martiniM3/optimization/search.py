@@ -11,7 +11,7 @@ returns every valid combination sorted by score.
 from ..common import *
 from .. import topology
 from .energy import GaussianTermCache, eval_gaussian_interac
-from .partition import _heavy_neighbor_map, voronoi_atoms_new, voronoi_atoms_old
+from .partition import HeavyAtomGeometry, _heavy_neighbor_map, voronoi_atoms_new, voronoi_atoms_old
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +194,7 @@ def find_bead_pos(
     # as the original np.array(list(itertools.combinations(...))) rows.
     heavy_atoms_array = np.array(list_heavy_atoms)
     energy_cache = GaussianTermCache(molecule, conformer, ringatoms_flat)
+    geometry = HeavyAtomGeometry(heavyatom_coords)
 
     # Min/max number of beads: in Martini 3, a bead covers 2 to 4 heavy atoms.
     max_beads = int(len(list_heavy_atoms) / 2.0)
@@ -235,6 +236,7 @@ def find_bead_pos(
             if all_atoms_in_beads_connected(
                 trial_comb, heavyatom_coords, list_heavy_atoms, list_bonds, molecule, allatom_coords, force_map,
                 heavy_index=heavy_index, num_arom=num_arom, heavy_neighbor_of=heavy_neighbor_of,
+                geometry=geometry,
             ):
 
                 # Accept the move
@@ -264,7 +266,7 @@ def find_bead_pos(
 
 def all_atoms_in_beads_connected(
     trial_comb, heavyatom_coords, list_heavyatoms, bondlist, mol, allatom_coords, force_map,
-    heavy_index=None, num_arom=None, heavy_neighbor_of=None,
+    heavy_index=None, num_arom=None, heavy_neighbor_of=None, geometry=None,
 ):
     """Make sure all atoms within one CG bead are connected to at least
     one other atom in that bead"""
@@ -272,18 +274,28 @@ def all_atoms_in_beads_connected(
     if heavy_index is None:
         heavy_index = {atom: i for i, atom in enumerate(list_heavyatoms)}
     # Bead coordinates are given by heavy atoms themselves
-    cgbead_coords = [heavyatom_coords[heavy_index[atom]] for atom in trial_comb]
+    bead_heavy_idx = [heavy_index[atom] for atom in trial_comb]
+    cgbead_coords = [heavyatom_coords[h] for h in bead_heavy_idx]
 
     if num_arom is None:
         _, num_arom = topology.is_aromatic(mol)
 
+    # Only the partitioning is used below, so bead centers can be skipped -- as
+    # long as every non-heavy atom has a bonded heavy atom. Otherwise computing
+    # them raises KeyError, and that must still happen here: e.g. a SMILES with
+    # explicit [H] atoms interleaves hydrogens among the heavy-atom indices.
+    with_cog = heavy_neighbor_of is None or (
+        len(heavy_neighbor_of) != len(allatom_coords) - len(heavyatom_coords)
+    )
+
     # Molecules with 0-1 fused rings use the newer (faster-converging)
     # partitioning approach; heavily fused-ring molecules, or a mapping the
     # caller is forcing through, fall back to the older one.
-    if not force_map and num_arom<7:
-        voronoi, _  = voronoi_atoms_new(cgbead_coords, heavyatom_coords, allatom_coords, mol, heavy_neighbor_of)
-    else:
-        voronoi, _  = voronoi_atoms_old(cgbead_coords, heavyatom_coords, allatom_coords, mol, heavy_neighbor_of)
+    voronoi_atoms = voronoi_atoms_new if not force_map and num_arom < 7 else voronoi_atoms_old
+    voronoi, _ = voronoi_atoms(
+        cgbead_coords, heavyatom_coords, allatom_coords, mol, heavy_neighbor_of,
+        geometry=geometry, bead_heavy_idx=bead_heavy_idx, with_cog=with_cog,
+    )
     logger.debug("voronoi %s", voronoi)
 
     # Precompute, once per trial_comb, per-region atom counts and per-region
