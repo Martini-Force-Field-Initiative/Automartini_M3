@@ -91,6 +91,23 @@ def gen_molecule_sdf(sdf):
     return molecule
 
 
+def heavy_atoms_first(molecule):
+    """Return the molecule with its atoms renumbered so the heavy atoms come
+    first, in their original relative order, followed by the hydrogens.
+
+    The mapping code uses a heavy atom's position in the heavy-atom list
+    (0..n-1) as its atom index, which only holds when no hydrogen sits between
+    heavy atoms. Hydrogens added by Chem.AddHs are appended at the end, but
+    hydrogens written explicitly in the input (e.g. SMILES "[H]OCC") keep their
+    place. A molecule already in that order is returned unchanged.
+    """
+    heavy = [atom.GetIdx() for atom in molecule.GetAtoms() if atom.GetSymbol() != "H"]
+    if heavy == list(range(len(heavy))):
+        return molecule
+    hydrogens = [atom.GetIdx() for atom in molecule.GetAtoms() if atom.GetSymbol() == "H"]
+    return Chem.RenumberAtoms(molecule, heavy + hydrogens)
+
+
 def get_charge(molecule):
     """Get net charge of molecule"""
     logger.debug("Entering get_charge()")

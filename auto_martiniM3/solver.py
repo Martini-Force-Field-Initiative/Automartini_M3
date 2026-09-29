@@ -104,7 +104,7 @@ class Cg_molecule:
         logger.info("Entering cg_molecule()")
 
         ### AutoM3 : MINIMIZATION with RDkit ###
-        molecule = Chem.Mol(molecule)
+        molecule = topology.heavy_atoms_first(Chem.Mol(molecule))
         AllChem.EmbedMolecule(molecule)
         AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
         #AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) 
