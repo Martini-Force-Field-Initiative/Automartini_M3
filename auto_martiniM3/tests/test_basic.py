@@ -9,7 +9,7 @@ import pytest
 
 import auto_martiniM3
 
-dpath = Path("tests/files")
+dpath = Path(__file__).parent / "files"
 
 
 def test_auto_martini_imported():
