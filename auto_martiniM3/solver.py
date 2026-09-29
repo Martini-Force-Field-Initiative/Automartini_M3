@@ -105,7 +105,11 @@ class Cg_molecule:
 
         ### AutoM3 : MINIMIZATION with RDkit ###
         molecule = topology.heavy_atoms_first(Chem.Mol(molecule))
-        AllChem.EmbedMolecule(molecule)
+        # Unseeded, RDKit draws from a process-wide generator, so the conformer (and
+        # thus the mapping) depended on what had been embedded earlier in the same
+        # process. 42 is that generator's initial seed: a molecule run on its own
+        # (e.g. one CLI call) gets exactly the conformer it got before.
+        AllChem.EmbedMolecule(molecule, randomSeed=42)
         AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
         #AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) 
 
