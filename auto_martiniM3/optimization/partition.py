@@ -120,7 +120,7 @@ def _absorb_lonely_beads(partitioning, closest_atoms, bead_dist, num_heavy):
                         closest_bead = j
                         closest_bead_dist = dist_bead_at
             if closest_bead == -1:
-                logger.warning("Error. Can't find an atom close to atom $s" % lonely_bead)
+                logger.warning("Error. Can't find an atom close to atom %s", lonely_bead)
                 exit(1)
             bead_size[partitioning[closest_bead]] -= 1
             bead_size[lonely_bead] += 1
