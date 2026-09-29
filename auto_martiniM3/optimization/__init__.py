@@ -47,7 +47,7 @@ from .energy import (
     penalize_lonely_atoms,
     eval_gaussian_interac,
 )
-from .partition import voronoi_atoms_new, voronoi_atoms_old
+from .partition import fused_ring_groups, voronoi_atoms_new, voronoi_atoms_old
 from .functional_groups import (
     merge,
     identify_functional_groups,
@@ -62,6 +62,7 @@ __all__ = [
     "atoms_in_gaussian",
     "penalize_lonely_atoms",
     "eval_gaussian_interac",
+    "fused_ring_groups",
     "voronoi_atoms_new",
     "voronoi_atoms_old",
     "merge",

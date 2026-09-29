@@ -130,6 +130,7 @@ class Cg_molecule:
 
         # Flatten list of ring atoms
         ring_atoms_flat = list(chain.from_iterable(ring_atoms))
+        ring_groups = optimization.fused_ring_groups(molecule)
 
         # Optimize coarse-grained bead positions -- keep all possibilities in case something goes
         # wrong later in the code.
@@ -168,13 +169,13 @@ class Cg_molecule:
             _, num_arom = topology.is_aromatic(molecule)
 
             if not force_map and num_arom<7: # AutoM3
-                self.atom_partitioning, self.cg_bead_coords = optimization.voronoi_atoms_new( 
-                    cg_bead_coords, self.heavy_atom_coords, self.atom_coords, molecule
+                self.atom_partitioning, self.cg_bead_coords = optimization.voronoi_atoms_new(
+                    cg_bead_coords, self.heavy_atom_coords, self.atom_coords, molecule, ring_groups=ring_groups
                 )
 
             else:
                 self.atom_partitioning, self.cg_bead_coords = optimization.voronoi_atoms_old(
-                    cg_bead_coords, self.heavy_atom_coords, self.atom_coords, molecule
+                    cg_bead_coords, self.heavy_atom_coords, self.atom_coords, molecule, ring_groups=ring_groups
                 )
             
             
@@ -185,8 +186,12 @@ class Cg_molecule:
             max_fails=1
             fails=0
 
-            if is_arom and (num_arom % 2) == 0: #only for pair number of aromatic atoms (actual code prevents sharing/mismatch)
-                if not optimization.max2arperbead(self.atom_partitioning, ring_atoms):
+            # The 2-ring-atoms-per-bead limit only applies with an even number of
+            # aromatic atoms (an odd ring can't be split that way); the fused-ring
+            # template applies to any fused system, aromatic or not.
+            if is_arom or ring_groups:
+                if not optimization.max2arperbead(self.atom_partitioning, ring_atoms, ring_groups=ring_groups,
+                                                  ring_atom_limit=is_arom and (num_arom % 2) == 0):
                     fails += 1
 
             if not optimization.functional_groups_ok(self.atom_partitioning,molecule, ring_atoms):

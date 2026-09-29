@@ -8,8 +8,71 @@ fused-ring molecules, or when a mapping forced by the caller requires it).
 """
 
 from ..common import *
+from ..topology import get_ring_atoms
 
 logger = logging.getLogger(__name__)
+
+
+def fused_ring_groups(molecule):
+    """Pairing template of the molecule's fused ring systems.
+
+    For each system of rings fused through shared bonds (naphthalene, quinoline,
+    coumarin, cannabinol's benzochromene...), returns its atoms split into bonded
+    pairs: each fusion bond is one pair -- the central bead, which becomes the
+    virtual site -- and the remaining ring atoms are paired along the periphery.
+    For two fused rings this is the Martini 3 layout (Alessandri et al., 2022):
+    4 beads around a virtual site at equal distance from them.
+
+    Systems that can't be split into bonded pairs are left out and keep the
+    distance-based partitioning: an odd segment between fusion bonds (indole,
+    anthracene), an atom shared by three rings, spiro or bridged rings.
+    """
+    rings = [set(r) for r in molecule.GetRingInfo().AtomRings()]
+    templates = []
+    for system in map(set, get_ring_atoms(molecule)):
+        system_rings = [r for r in rings if r <= system]
+        fusion_bonds, pairable = [], True
+        for i, ring_a in enumerate(system_rings):
+            for ring_b in system_rings[i + 1:]:
+                shared = ring_a & ring_b
+                if not shared:
+                    continue
+                if len(shared) == 2 and molecule.GetBondBetweenAtoms(*shared) is not None:
+                    fusion_bonds.append(tuple(sorted(shared)))
+                else:
+                    pairable = False
+        fusion_atoms = [a for bond in fusion_bonds for a in bond]
+        if not fusion_bonds or not pairable or len(set(fusion_atoms)) != len(fusion_atoms):
+            continue
+
+        groups = list(fusion_bonds)
+        leftover = system - set(fusion_atoms)
+        neighbors = {a: [n.GetIdx() for n in molecule.GetAtomWithIdx(a).GetNeighbors()
+                         if n.GetIdx() in leftover
+                         and molecule.GetBondBetweenAtoms(a, n.GetIdx()).IsInRing()]
+                     for a in leftover}
+        seen = set()
+        for start in sorted(leftover):
+            if start in seen:
+                continue
+            segment, stack = [], [start]
+            while stack:
+                a = stack.pop()
+                if a not in seen:
+                    seen.add(a)
+                    segment.append(a)
+                    stack.extend(neighbors[a])
+            ends = sorted(a for a in segment if len(neighbors[a]) == 1)
+            if len(segment) % 2 or len(ends) != 2 or any(len(neighbors[a]) > 2 for a in segment):
+                pairable = False
+                break
+            path = [ends[0]]
+            while len(path) < len(segment):
+                path.append(next(n for n in neighbors[path[-1]] if n not in path))
+            groups += [tuple(sorted(path[k:k + 2])) for k in range(0, len(path), 2)]
+        if pairable and all(molecule.GetBondBetweenAtoms(*g) is not None for g in groups):
+            templates.append(groups)
+    return templates
 
 
 def _heavy_neighbor_map(molecule, num_heavy, num_atoms):
@@ -94,6 +157,31 @@ def _bead_rows(cgbead_coords, heavyatom_coords, geometry, bead_heavy_idx):
     return _bead_atom_tables(cgbead_coords, heavyatom_coords)
 
 
+def _bead_heads(bead_same, bead_heavy_idx):
+    """Index of the heavy atom each bead sits on (None if it sits on none)."""
+    if bead_heavy_idx is not None:
+        return list(bead_heavy_idx)
+    return [next((j for j, same in enumerate(row) if same), None) for row in bead_same]
+
+
+def _apply_ring_templates(partitioning, bead_heads, ring_groups):
+    """For each fused ring system (see fused_ring_groups) in which every pair holds
+    exactly one bead center, give both atoms of each pair to that bead. Distances
+    alone can't be trusted there: a periphery atom of a fused ring is often
+    equidistant from two bead centers. Other candidates are left as they are."""
+    for groups in ring_groups:
+        owners = []
+        for group in groups:
+            beads = [b for b, head in enumerate(bead_heads) if head in group]
+            if len(beads) != 1:
+                break
+            owners.append(beads[0])
+        else:
+            for group, bead in zip(groups, owners):
+                for atom in group:
+                    partitioning[atom] = bead
+
+
 def _absorb_lonely_beads(partitioning, closest_atoms, bead_dist, num_heavy):
     """If one bead has only one heavy atom, include one more: the closest atom
     (not itself a bead headliner) from a bead that has more than two."""
@@ -149,7 +237,7 @@ def _hydrogen_aware_cog(partitioning, allatom_coords, heavy_neighbor_of):
 
 def voronoi_atoms_new(
     cgbead_coords, heavyatom_coords, allatom_coords, molecule, heavy_neighbor_of=None,
-    geometry=None, bead_heavy_idx=None, with_cog=True,
+    geometry=None, bead_heavy_idx=None, with_cog=True, ring_groups=None,
 ):
     """
     Partition all atoms between CG beads, based on headliners coordinates and distances between other atoms coordinates.
@@ -158,9 +246,12 @@ def voronoi_atoms_new(
     geometry/bead_heavy_idx: optional HeavyAtomGeometry, and each bead's index in
     heavyatom_coords, when every bead sits on a heavy atom (as in the bead search).
     with_cog: set False to skip computing bead centers when only the partitioning is needed.
+    ring_groups: fused_ring_groups(molecule), computed here if not given.
     """
     logger.debug("Entering voronoi_atoms()")
     bead_dist, bead_same = _bead_rows(cgbead_coords, heavyatom_coords, geometry, bead_heavy_idx)
+    if ring_groups is None:
+        ring_groups = fused_ring_groups(molecule)
     partitioning = {}
 
     #Populate partitioning with atoms and atom headliners of beads
@@ -197,6 +288,7 @@ def voronoi_atoms_new(
                 if closest_bead is not None:
                     partitioning[atom] = closest_bead
 
+        _apply_ring_templates(partitioning, _bead_heads(bead_same, bead_heavy_idx), ring_groups)
         _absorb_lonely_beads(partitioning, closest_atoms, bead_dist, len(heavyatom_coords))
     else:
         for j in range(len(heavyatom_coords)):
@@ -211,14 +303,16 @@ def voronoi_atoms_new(
 
 def voronoi_atoms_old(
     cgbead_coords, heavyatom_coords, allatom_coords, molecule, heavy_neighbor_of=None,
-    geometry=None, bead_heavy_idx=None, with_cog=True,
+    geometry=None, bead_heavy_idx=None, with_cog=True, ring_groups=None,
 ):
     """Partition all atoms between CG beads
 
-    geometry/bead_heavy_idx/with_cog: see voronoi_atoms_new().
+    geometry/bead_heavy_idx/with_cog/ring_groups: see voronoi_atoms_new().
     """
     logger.debug("Entering voronoi_atoms()")
-    bead_dist, _ = _bead_rows(cgbead_coords, heavyatom_coords, geometry, bead_heavy_idx)
+    bead_dist, bead_same = _bead_rows(cgbead_coords, heavyatom_coords, geometry, bead_heavy_idx)
+    if ring_groups is None:
+        ring_groups = fused_ring_groups(molecule)
     partitioning = {}
     for j in range(len(heavyatom_coords)):
         if j not in partitioning.keys():
@@ -246,6 +340,7 @@ def voronoi_atoms_old(
                 logger.warning("Error. Can't find closest atom to bead %s" % i)
                 exit(1)
             closest_atoms[i] = closest_atom
+        _apply_ring_templates(partitioning, _bead_heads(bead_same, bead_heavy_idx), ring_groups)
         _absorb_lonely_beads(partitioning, closest_atoms, bead_dist, len(heavyatom_coords))
 
     if not with_cog:

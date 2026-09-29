@@ -3,7 +3,9 @@
 identify_functional_groups() is Ertl's functional-group finder (RDKit
 contrib, Hall & Godin), used here to check that a candidate bead mapping
 keeps each functional group inside a single bead (functional_groups_ok())
-and doesn't crowd more than two aromatic atoms into one bead (max2arperbead()).
+and respects the ring rules (max2arperbead()): at most two ring atoms per bead,
+and fused ring systems split into the pairs of their template (fusion atoms
+together in the central, virtual-site bead).
 """
 
 from ..common import *
@@ -113,9 +115,13 @@ def functional_groups_ok(atom_partitioning,molecule,ringatoms):
         return False
 
 
-def max2arperbead(atom_partitioning, ringatoms):
+def max2arperbead(atom_partitioning, ringatoms, ring_groups=None, ring_atom_limit=True):
     """
-    Checking the number of aromatic atoms in a bead and returning False if it's more than 2.
+    Returns False if the mapping breaks a ring rule:
+    - ring_atom_limit: no bead may hold more than 2 ring atoms;
+    - ring_groups (fused_ring_groups()): in each fused ring system, every pair of
+      the template must sit in its own bead -- the fusion atoms in the central bead,
+      which becomes the virtual site, the other ring atoms paired around it.
     """
     bead_atoms = {}
     for at, bead in atom_partitioning.items():
@@ -123,10 +129,16 @@ def max2arperbead(atom_partitioning, ringatoms):
             bead_atoms[bead] = []
         bead_atoms[bead].append(at)
 
-    # Convert ringatoms to a set
-    ringatoms_set = set(atom for sublist in ringatoms for atom in sublist)
-    for bead,atoms in bead_atoms.items():
-        ring_atom_count = sum(1 for atom in atoms if atom in ringatoms_set)
-        if ring_atom_count > 2:
+    if ring_atom_limit:
+        # Convert ringatoms to a set
+        ringatoms_set = set(atom for sublist in ringatoms for atom in sublist)
+        for bead,atoms in bead_atoms.items():
+            ring_atom_count = sum(1 for atom in atoms if atom in ringatoms_set)
+            if ring_atom_count > 2:
+                return False
+
+    for groups in ring_groups or []:
+        beads = [atom_partitioning[a] for a, _ in groups]
+        if any(atom_partitioning[b] != bead for (_, b), bead in zip(groups, beads)) or len(set(beads)) != len(beads):
             return False
     return True
