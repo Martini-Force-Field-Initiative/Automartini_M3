@@ -94,6 +94,39 @@ def _bead_rows(cgbead_coords, heavyatom_coords, geometry, bead_heavy_idx):
     return _bead_atom_tables(cgbead_coords, heavyatom_coords)
 
 
+def _absorb_lonely_beads(partitioning, closest_atoms, bead_dist, num_heavy):
+    """If one bead has only one heavy atom, include one more: the closest atom
+    (not itself a bead headliner) from a bead that has more than two."""
+    # Kept in sync with partitioning at its single mutation point below, so
+    # every lookup equals counting partitioning.values() at that moment.
+    bead_size = Counter(partitioning.values())
+    for i in list(partitioning.values()):
+        if bead_size[i] == 1:
+            # Find bead
+            lonely_bead = i
+            # Voronoi to find closest atom
+            closest_bead = -1
+            closest_bead_dist = 10000.0
+            for j in range(num_heavy):
+                if partitioning[j] != lonely_bead:
+                    dist_bead_at = bead_dist[lonely_bead][j]
+                    # Only consider if it's closer, not a CG bead itself, and
+                    # the CG bead it belongs to has more than one other atom.
+                    if (
+                        dist_bead_at < closest_bead_dist
+                        and j != closest_atoms[partitioning[j]]
+                        and bead_size[partitioning[j]] > 2
+                    ):
+                        closest_bead = j
+                        closest_bead_dist = dist_bead_at
+            if closest_bead == -1:
+                logger.warning("Error. Can't find an atom close to atom $s" % lonely_bead)
+                exit(1)
+            bead_size[partitioning[closest_bead]] -= 1
+            bead_size[lonely_bead] += 1
+            partitioning[closest_bead] = lonely_bead
+
+
 def _hydrogen_aware_cog(partitioning, allatom_coords, heavy_neighbor_of):
     """Center of geometry of each bead, including the hydrogens bonded to its heavy atoms."""
     aa_partitioning = partitioning.copy()
@@ -164,30 +197,7 @@ def voronoi_atoms_new(
                 if closest_bead is not None:
                     partitioning[atom] = closest_bead
 
-        # If one bead has only one heavy atom, include one more
-        for i in list(partitioning.values()):
-            if sum(x == i for x in partitioning.values()) == 1:
-                # Find bead
-                lonely_bead = i
-                # Voronoi to find closest atom
-                closest_bead = -1
-                closest_bead_dist = 10000.0
-                for j in range(len(heavyatom_coords)):
-                    if partitioning[j] != lonely_bead:
-                        dist_bead_at = bead_dist[lonely_bead][j]
-                        # Only consider if it's closer, not a CG bead itself, and
-                        # the CG bead it belongs to has more than one other atom.
-                        if (
-                            dist_bead_at < closest_bead_dist
-                            and j != closest_atoms[partitioning[j]]
-                            and sum(x == partitioning[j] for x in partitioning.values()) > 2
-                        ):
-                            closest_bead = j
-                            closest_bead_dist = dist_bead_at
-                if closest_bead == -1:
-                    logger.warning("Error. Can't find an atom close to atom $s" % lonely_bead)
-                    exit(1)
-                partitioning[closest_bead] = lonely_bead
+        _absorb_lonely_beads(partitioning, closest_atoms, bead_dist, len(heavyatom_coords))
     else:
         for j in range(len(heavyatom_coords)):
             partitioning[j] = 0
@@ -236,30 +246,7 @@ def voronoi_atoms_old(
                 logger.warning("Error. Can't find closest atom to bead %s" % i)
                 exit(1)
             closest_atoms[i] = closest_atom
-        # If one bead has only one heavy atom, include one more
-        for i in list(partitioning.values()):
-            if sum(x == i for x in partitioning.values()) == 1:
-                # Find bead
-                lonely_bead = i
-                # Voronoi to find closest atom
-                closest_bead = -1
-                closest_bead_dist = 10000.0
-                for j in range(len(heavyatom_coords)):
-                    if partitioning[j] != lonely_bead:
-                        dist_bead_at = bead_dist[lonely_bead][j]
-                        # Only consider if it's closer, not a CG bead itself, and
-                        # the CG bead it belongs to has more than one other atom.
-                        if (
-                            dist_bead_at < closest_bead_dist
-                            and j != closest_atoms[partitioning[j]]
-                            and sum(x == partitioning[j] for x in partitioning.values()) > 2
-                        ):
-                            closest_bead = j
-                            closest_bead_dist = dist_bead_at
-                if closest_bead == -1:
-                    logger.warning("Error. Can't find an atom close to atom $s" % lonely_bead)
-                    exit(1)
-                partitioning[closest_bead] = lonely_bead
+        _absorb_lonely_beads(partitioning, closest_atoms, bead_dist, len(heavyatom_coords))
 
     if not with_cog:
         return partitioning, None
