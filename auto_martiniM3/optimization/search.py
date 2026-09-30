@@ -5,7 +5,8 @@ combination of heavy atoms as bead headliners (check_beads() filters out
 combinations that can't possibly be valid; all_atoms_in_beads_connected()
 rejects combinations whose resulting bead partition isn't fully connected),
 scores each surviving combination with the Gaussian objective function, and
-returns every valid combination sorted by score.
+returns every valid combination sorted by score. BeadSearch holds the data
+computed once per molecule that all those trials share.
 """
 
 from ..common import *
@@ -143,6 +144,83 @@ def _valid_bead_combinations(num_atoms, num_beads, adjacency, terminal_partner):
     yield from extend(0)
 
 
+class BeadSearch:
+    """Per-molecule data of the bead search, computed once.
+
+    find_bead_pos() scores every valid combination of bead positions -- up to
+    about a million for a 30-heavy-atom molecule -- and they all share the same
+    bond graph, heavy-atom indexing, geometry, energy terms and fused-ring
+    templates. This object holds those, so each trial only does its own work.
+    """
+
+    def __init__(self, molecule, conformer, list_heavy_atoms, heavyatom_coords, allatom_coords, ringatoms_flat,
+                 force_map):
+        self.molecule = molecule
+        self.conformer = conformer
+        self.list_heavy_atoms = list_heavy_atoms
+        self.heavyatom_coords = heavyatom_coords
+        self.allatom_coords = allatom_coords
+        self.ringatoms_flat = ringatoms_flat
+        self.force_map = force_map
+
+        # Bonds between heavy atoms, as [atom, atom] pairs in heavy-atom order.
+        self.list_bonds = []
+        for i in range(len(list_heavy_atoms)):
+            for j in range(i + 1, len(list_heavy_atoms)):
+                if molecule.GetBondBetweenAtoms(int(list_heavy_atoms[i]), int(list_heavy_atoms[j])) is not None:
+                    self.list_bonds.append([list_heavy_atoms[i], list_heavy_atoms[j]])
+        _, bond_endpoint_count, neighbor_of = _bond_lookup_aids(self.list_bonds)
+        self.heavy_index = {atom: i for i, atom in enumerate(list_heavy_atoms)}
+        _, self.num_arom = topology.is_aromatic(molecule)
+        self.heavy_neighbor_of = _heavy_neighbor_map(molecule, len(list_heavy_atoms), len(allatom_coords))
+
+        # Bond graph by position in list_heavy_atoms, and the atom each terminal
+        # heavy atom hangs off, for _valid_bead_combinations().
+        self.adjacency = [[] for _ in list_heavy_atoms]
+        for a, b in self.list_bonds:
+            self.adjacency[self.heavy_index[a]].append(self.heavy_index[b])
+            self.adjacency[self.heavy_index[b]].append(self.heavy_index[a])
+        self.terminal_partner = [
+            int(neighbor_of[atom][-1]) if bond_endpoint_count[atom] == 1 else None
+            for atom in list_heavy_atoms
+        ]
+
+        # Indexing a numpy array keeps trial_comb elements the same type (np.int64)
+        # as the original np.array(list(itertools.combinations(...))) rows.
+        self.heavy_atoms_array = np.array(list_heavy_atoms)
+        self.energy_cache = GaussianTermCache(molecule, conformer, ringatoms_flat)
+        self.geometry = HeavyAtomGeometry(heavyatom_coords)
+        self.ring_groups = fused_ring_groups(molecule)
+        # Atom positions as the Python floats GetAtomPosition() returns.
+        self.atom_xyz = [tuple(conformer.GetAtomPosition(i)[m] for m in range(3))
+                         for i in range(conformer.GetNumAtoms())]
+
+    def combinations(self, num_beads):
+        """Positions (in list_heavy_atoms) of every num_beads-bead combination
+        check_beads() accepts, in itertools.combinations order."""
+        return _valid_bead_combinations(len(self.list_heavy_atoms), num_beads, self.adjacency,
+                                        self.terminal_partner)
+
+    def connected_combinations(self, combinations):
+        """Score each combination of positions and yield, in the same order,
+        (trial_comb, energy) for those whose beads would hold connected atoms."""
+        for positions in combinations:
+            trial_comb = list(self.heavy_atoms_array[list(positions)])
+            trial_ene = eval_gaussian_interac(self.molecule, self.conformer, trial_comb, self.ringatoms_flat,
+                                              cache=self.energy_cache)
+            logger.info("; %s %s", trial_comb, trial_ene)
+            if all_atoms_in_beads_connected(
+                trial_comb, self.heavyatom_coords, self.list_heavy_atoms, self.list_bonds, self.molecule,
+                self.allatom_coords, self.force_map, heavy_index=self.heavy_index, num_arom=self.num_arom,
+                heavy_neighbor_of=self.heavy_neighbor_of, geometry=self.geometry, ring_groups=self.ring_groups,
+            ):
+                yield trial_comb, trial_ene
+
+    def bead_positions(self, trial_comb):
+        """Coordinates of the beads of trial_comb, in sorted atom order."""
+        return [list(self.atom_xyz[int(atom)]) for atom in sorted(trial_comb)]
+
+
 def find_bead_pos(
     molecule, conformer, list_heavy_atoms, heavyatom_coords, allatom_coords, ring_atoms, ringatoms_flat, force_map
 ):
@@ -165,104 +243,34 @@ def find_bead_pos(
     if len(list_heavy_atoms) > 50:
         print("Error. Exhaustive enumeration can't handle large molecules.")
         exit(1)
-    # List of bonds between heavy atoms
-    list_bonds = []
-    for i in range(len(list_heavy_atoms)):
-        for j in range(i + 1, len(list_heavy_atoms)):
-            if (
-                molecule.GetBondBetweenAtoms(int(list_heavy_atoms[i]), int(list_heavy_atoms[j]))
-                is not None
-            ):
-                list_bonds.append([list_heavy_atoms[i], list_heavy_atoms[j]])
 
-    # Lookup structures reused by every trial combination below, instead of being
-    # rebuilt from list_bonds/molecule on each all_atoms_in_beads_connected() call.
-    _, bond_endpoint_count, neighbor_of = _bond_lookup_aids(list_bonds)
-    heavy_index = {atom: i for i, atom in enumerate(list_heavy_atoms)}
-    _, num_arom = topology.is_aromatic(molecule)
-    heavy_neighbor_of = _heavy_neighbor_map(molecule, len(list_heavy_atoms), len(allatom_coords))
+    search = BeadSearch(molecule, conformer, list_heavy_atoms, heavyatom_coords, allatom_coords, ringatoms_flat,
+                        force_map)
 
-    # Bond graph by position in list_heavy_atoms, for _valid_bead_combinations().
-    adjacency = [[] for _ in list_heavy_atoms]
-    for a, b in list_bonds:
-        adjacency[heavy_index[a]].append(heavy_index[b])
-        adjacency[heavy_index[b]].append(heavy_index[a])
-    terminal_partner = [
-        int(neighbor_of[atom][-1]) if bond_endpoint_count[atom] == 1 else None
-        for atom in list_heavy_atoms
-    ]
-    # Indexing a numpy array keeps trial_comb elements the same type (np.int64)
-    # as the original np.array(list(itertools.combinations(...))) rows.
-    heavy_atoms_array = np.array(list_heavy_atoms)
-    energy_cache = GaussianTermCache(molecule, conformer, ringatoms_flat)
-    geometry = HeavyAtomGeometry(heavyatom_coords)
-    ring_groups = fused_ring_groups(molecule)
-
-    # Min/max number of beads: in Martini 3, a bead covers 2 to 4 heavy atoms.
-    max_beads = int(len(list_heavy_atoms) / 2.0)
+    # In Martini 3 a bead covers 2 to 4 heavy atoms.
     min_beads = int(len(list_heavy_atoms) / 4.0)
+    max_beads = int(len(list_heavy_atoms) / 2.0)
 
-    # Collect all possible combinations of bead positions
-    best_trial_comb = []
-    list_trial_comb = []
-    ene_best_trial = 1e6
+    candidates = []  # [trial_comb, bead positions, energy] of every connected combination
+    best_trial_comb, ene_best_trial = [], 1e6
     last_best_trial_comb = []
+    for num_beads in range(min_beads, max_beads + 1):
+        # With fewer than 4 heavy atoms min_beads is 0 and that level runs as 1 bead,
+        # so the 1-bead level is scored twice and its candidates are listed twice.
+        if num_beads == 0:
+            num_beads = 1
+        for trial_comb, trial_ene in search.connected_combinations(search.combinations(num_beads)):
+            if trial_ene < ene_best_trial:
+                ene_best_trial = trial_ene
+                best_trial_comb = sorted(trial_comb)
+            candidates.append([trial_comb, search.bead_positions(trial_comb), trial_ene])
 
-    # Keep track of all combinations and scores
-    list_combs = []
-    list_energies = []
-
-    for num_beads in range(min_beads,max_beads+1):
-
-        # Use recursive function to loop through all possible
-        # combinations of CG bead positions.
-        if num_beads==0: num_beads=1
-        combs = []
-        energies = []
-
-        # Trial positions: any heavy atom, restricted to the combinations check_beads() accepts
-        for positions in _valid_bead_combinations(
-            len(list_heavy_atoms), num_beads, adjacency, terminal_partner
-        ):
-            trial_comb = list(heavy_atoms_array[list(positions)])
-
-            # Do the energy evaluation
-            trial_ene = eval_gaussian_interac(
-                molecule, conformer, trial_comb, ringatoms_flat, cache=energy_cache
-            )
-            combs.append(trial_comb)
-            energies.append(trial_ene)
-
-            logger.info("; %s %s", trial_comb, trial_ene)
-            # Make sure all atoms within one bead would be connected
-            if all_atoms_in_beads_connected(
-                trial_comb, heavyatom_coords, list_heavy_atoms, list_bonds, molecule, allatom_coords, force_map,
-                heavy_index=heavy_index, num_arom=num_arom, heavy_neighbor_of=heavy_neighbor_of,
-                geometry=geometry, ring_groups=ring_groups,
-            ):
-
-                # Accept the move
-                if trial_ene < ene_best_trial:
-                    ene_best_trial = trial_ene
-                    best_trial_comb = sorted(trial_comb)
-                # Get bead positions
-                beadpos = [[0] * 3 for l in range(len(trial_comb))]
-                for l in range(len(trial_comb)):
-                    beadpos[l] = [
-                        conformer.GetAtomPosition(int(sorted(trial_comb)[l]))[m]
-                        for m in range(3)
-                    ]
-                # Store configuration
-                list_trial_comb.append([trial_comb, beadpos, trial_ene])
-
+        # Stop adding beads once one more bead no longer changes the best combination.
         if last_best_trial_comb == best_trial_comb:
             break
-
         last_best_trial_comb = best_trial_comb
-        list_combs.append(combs)
-        list_energies.append(energies)
 
-    sorted_combs = np.array(sorted(list_trial_comb, key=itemgetter(2)), dtype="object")
+    sorted_combs = np.array(sorted(candidates, key=itemgetter(2)), dtype="object")
     return sorted_combs[:, 0], sorted_combs[:, 1]
 
 

@@ -27,6 +27,8 @@ If not, see http://www.gnu.org/licenses . See also top-level README
 and LICENSE files.
 """ 
 
+from dataclasses import dataclass
+
 from . import optimization, output, topology
 from .common import *
 
@@ -84,25 +86,71 @@ def check_additivity(forcepred, beadtypes, molecule, mol_smi): #AutoM3 change : 
         return False
 
 
+@dataclass
+class _RunOptions:
+    """What the caller asked Cg_molecule for (names, prediction options, output files)."""
+    molname: str
+    mol_smi: str
+    simple_model: bool
+    topfname: str
+    bartenderfname: str
+    bartender: bool
+    logp_file: str
+    forcepred: bool
+
+
+class _MoleculeData:
+    """Everything the mapping needs to know about the embedded molecule, computed once."""
+
+    def __init__(self, molecule):
+        self.molecule = molecule
+        features = topology.extract_features(molecule)
+        self.heavy_atoms, self.heavy_atom_names = topology.get_atoms(molecule)
+        self.conformer, self.heavy_atom_coords, self.atom_coords = topology.get_heavy_atom_coords(molecule)
+        # Ring systems (fused rings merged), aromaticity and H-bond donors/acceptors
+        self.ring_atoms = topology.get_ring_atoms(molecule)
+        self.is_arom, self.num_arom = topology.is_aromatic(molecule)
+        self.hbond_a = topology.get_hbond_a(features)
+        self.hbond_d = topology.get_hbond_d(features)
+        self.ring_atoms_flat = list(chain.from_iterable(self.ring_atoms))
+        # Pairing template of the fused ring systems (see optimization.fused_ring_groups)
+        self.ring_groups = optimization.fused_ring_groups(molecule)
+
+
 class Cg_molecule:
-    """Main class to coarse-grain molecule"""
+    """Main class to coarse-grain molecule.
+
+    Building it runs the whole mapping: embed the molecule in 3D, score every
+    candidate bead placement (optimization.find_bead_pos), then try the
+    candidates from best to worst score until one passes all the checks, and
+    write its topology.
+    """
 
     def __init__(self, molecule, mol_smi, molname, simple_model, topfname, bartenderfname, bartender, logp_file, forcepred=True):
         # AutoM3 new arguments : mol_smi, simple_model, bartenderfname, bartender, logp_file
 
         self.heavy_atom_coords = None
-        self.atom_coords = None # AutoM3 new variable 
+        self.atom_coords = None # AutoM3 new variable
         self.list_heavyatom_names = None
         self.atom_partitioning = None
         self.cg_bead_names = []
         self.cg_bead_coords = []
         self.topout = None
-        self.bartender_out = None # AutoM3 new variable 
+        self.bartender_out = None # AutoM3 new variable
         self.molname=molname # AutoM3 change : for pretty GRO file (will be easier to look on a molecule in VMD with its proper name)
-        force_map = False # AutoM3 new variable
 
         logger.info("Entering cg_molecule()")
 
+        options = _RunOptions(molname, mol_smi, simple_model, topfname, bartenderfname, bartender, logp_file,
+                              forcepred)
+        mol = _MoleculeData(self._embed(molecule))
+        self.list_heavyatom_names = mol.heavy_atom_names
+        self.heavy_atom_coords, self.atom_coords = mol.heavy_atom_coords, mol.atom_coords
+        self._find_mapping(mol, options)
+
+    @staticmethod
+    def _embed(molecule):
+        """3D structure the mapping works on: heavy atoms first, embedded, MMFF94s-minimized."""
         ### AutoM3 : MINIMIZATION with RDkit ###
         molecule = topology.heavy_atoms_first(Chem.Mol(molecule))
         # Unseeded, RDKit draws from a process-wide generator, so the conformer (and
@@ -111,275 +159,181 @@ class Cg_molecule:
         # (e.g. one CLI call) gets exactly the conformer it got before.
         AllChem.EmbedMolecule(molecule, randomSeed=42)
         AllChem.MMFFOptimizeMolecule(molecule, maxIters=1000,mmffVariant='MMFF94s')
-        #AllChem.NormalizeDepiction(molecule, scaleFactor=1.12) 
+        return molecule
 
-        feats = topology.extract_features(molecule)
+    def _find_mapping(self, mol, options):
+        """Try the candidate bead placements from best to worst score until one
+        passes every check, then write its topology.
 
-        # Get list of heavy atoms and their coordinates
-        list_heavy_atoms, self.list_heavyatom_names = topology.get_atoms(molecule)
-
-        conf, self.heavy_atom_coords, self.atom_coords = topology.get_heavy_atom_coords(molecule)
-
-        # Identify ring-type atoms
-        ring_atoms = topology.get_ring_atoms(molecule)
-        is_arom, num_arom = topology.is_aromatic(molecule) # AutoM3
-
-        # Get Hbond information
-        hbond_a = topology.get_hbond_a(feats)
-        hbond_d = topology.get_hbond_d(feats)
-
-        # Flatten list of ring atoms
-        ring_atoms_flat = list(chain.from_iterable(ring_atoms))
-        ring_groups = optimization.fused_ring_groups(molecule)
-
+        The first pass tolerates no failed check. If no candidate among the best
+        half passes, the same candidates are tried again in force_map mode: older
+        partitioning, and one failed check tolerated.
+        """
         # Optimize coarse-grained bead positions -- keep all possibilities in case something goes
         # wrong later in the code.
         list_cg_beads, list_bead_pos = optimization.find_bead_pos(
-            molecule,
-            conf,
-            list_heavy_atoms,
-            self.heavy_atom_coords,
-            self.atom_coords,
-            ring_atoms,
-            ring_atoms_flat, 
-            force_map # AutoM3 new argument
+            mol.molecule, mol.conformer, mol.heavy_atoms, self.heavy_atom_coords, self.atom_coords,
+            mol.ring_atoms, mol.ring_atoms_flat, False,
         )
 
         # A bead holds at most 2 ring atoms, so that limit can only be met by a candidate with
         # at least ceil(ring atoms / 2) beads. When no candidate is that large (e.g. anthracene,
         # bithiophene) every candidate would fail it until the force_map fallback, so skip it.
         ring_limit_reachable = (max((len(c) for c in list_cg_beads), default=0)
-                                >= math.ceil(len(set(ring_atoms_flat)) / 2))
+                                >= math.ceil(len(set(mol.ring_atoms_flat)) / 2))
 
         # Loop through best 1% cg_beads and avg_pos
         max_attempts = int(math.ceil(0.5 * len(list_cg_beads)))
         logger.info(f"Max. number of attempts: {max_attempts}")
+        force_map = False
         attempt = 0
-
         while attempt < max_attempts:
             cg_beads = list_cg_beads[attempt]
-            bead_pos = list_bead_pos[attempt]
-            success = True
-
-            # Remove mappings with bead numbers less than most optimal mapping.
-            if (
-                len(cg_beads) < len(list_cg_beads[0])
-                and (len(list_heavy_atoms) - (5 * len(cg_beads))) > 3
-            ):
-                success = False
-
-            # Extract position of coarse-grained beads
-            cg_bead_coords = get_coords(conf, cg_beads, bead_pos, ring_atoms_flat)
-
-            ### AutoM3 change : different partition of atoms into coarse-grained beads, depending on the number of aromatic cycles ###
-            _, num_arom = topology.is_aromatic(molecule)
-
-            if not force_map and num_arom<7: # AutoM3
-                self.atom_partitioning, self.cg_bead_coords = optimization.voronoi_atoms_new(
-                    cg_bead_coords, self.heavy_atom_coords, self.atom_coords, molecule, ring_groups=ring_groups
-                )
-
-            else:
-                self.atom_partitioning, self.cg_bead_coords = optimization.voronoi_atoms_old(
-                    cg_bead_coords, self.heavy_atom_coords, self.atom_coords, molecule, ring_groups=ring_groups
-                )
-            
-            
-            # AutoM3 : trying mapping with at least 1 of 2 new conditions : 
-            #    Max 2 aromatic atoms per bead ; 
-            #    Holding Functional groups together in bead ;
-            
-            max_fails=1
-            fails=0
-
-            # The 2-ring-atoms-per-bead limit only applies with an even number of
-            # aromatic atoms (an odd ring can't be split that way) and when some candidate
-            # has enough beads for it; the fused-ring template applies to any fused
-            # system, aromatic or not.
-            if is_arom or ring_groups:
-                if not optimization.max2arperbead(self.atom_partitioning, ring_atoms, ring_groups=ring_groups,
-                                                  ring_atom_limit=is_arom and (num_arom % 2) == 0
-                                                  and ring_limit_reachable):
-                    fails += 1
-
-            if not optimization.functional_groups_ok(self.atom_partitioning,molecule, ring_atoms):
-                fails += 1
-            
-            if force_map:
-                if fails > max_fails:
-                    success=False
-                else:
-                    success=True
-            else:
-                if fails>0: 
-                    success=False
-
-
-            logger.info("; Atom partitioning: {atom_partitioning}")
-
-            # cgbeads should take atom rings number if ring atom in bead
-            cg_beads_rings = cg_beads.copy()
-            for i, b in enumerate(cg_beads):
-                if b not in ring_atoms_flat:
-                    atoms_in_b = []
-                    for at,bd in self.atom_partitioning.items():
-                        if bd == i : atoms_in_b.append(at)
-                    for a in atoms_in_b:
-                        if a in ring_atoms_flat:
-                            cg_beads_rings[i]=a
-                    
-
-            self.cg_bead_names, bead_types, _, _ = topology.print_atoms(
-                molname,
-                forcepred,
-                cg_beads,
-                molecule,
-                hbond_a,
-                hbond_d,
-                self.atom_partitioning,
-                ring_atoms,
-                ring_atoms_flat,
-                logp_file, # AutoM3 new argument
-                True,
+            passed, cg_beads_rings = self._check_candidate(
+                mol, options, cg_beads, list_bead_pos[attempt], list_cg_beads[0], force_map, ring_limit_reachable
             )
-
-            if not self.cg_bead_names:
-                success = False
-            # Check additivity between fragments and entire molecule
-            if not check_additivity(forcepred, bead_types, molecule, mol_smi):
-                success = False
-            
-            # Bond list
-            try:
-                bond_list, const_list , _= topology.print_bonds(
-                    cg_beads,
-                    cg_beads_rings,
-                    molecule,
-                    self.atom_partitioning,
-                    self.cg_bead_coords,
-                    bead_types, # AutoM3 change
-                    ring_atoms,
-                    trial=True,
-                )
-            except Exception:
-                raise
-
-            # I added errval below from the master branch ... not sure where to use this anywhere, possibly leave for debugging
-            if not ring_atoms and (len(bond_list) + len(const_list)) >= len(self.cg_bead_names):
-                errval = 3
-                success = False
-            if (len(bond_list) + len(const_list)) < len(self.cg_bead_names) - 1:
-                errval = 5
-                success = False
-            if len(cg_beads) != len(self.cg_bead_names):
-                success = False
-                errval = 8
-            
-            if success:
-                header_write = topology.print_header(molname, mol_smi)
-                self.cg_bead_names, bead_types, atoms_write, atoms_in_smi = topology.print_atoms( # AutoM3 new variable : atoms_in_smi
-                    molname,
-                    forcepred,
-                    cg_beads,
-                    molecule,
-                    hbond_a,
-                    hbond_d,
-                    self.atom_partitioning,
-                    ring_atoms,
-                    ring_atoms_flat,
-                    logp_file, # AutoM3 change
-                    trial=False,
-                )
-
-                bond_list, const_list, bonds_write = topology.print_bonds(
-                    cg_beads,
-                    cg_beads_rings,
-                    molecule,
-                    self.atom_partitioning,
-                    self.cg_bead_coords,
-                    bead_types, # AutoM3 change
-                    ring_atoms,
-                    False,
-                )
-
-                if not simple_model: # AutoM3
-                    dihedrals_write = topology.print_dihedrals(
-                    cg_beads,
-                    const_list,
-                    ring_atoms,
-                    self.cg_bead_coords,
-                    bead_types # AutoM3 change
-                    )
-
-                angles_write, angle_list = topology.print_angles(
-                    cg_beads,
-                    molecule,
-                    self.atom_partitioning,
-                    self.cg_bead_coords,
-                    bead_types, # AutoM3 change
-                    bond_list,
-                    const_list,
-                    ring_atoms,
-                )
-
-                if not angles_write and len(bond_list) > 1:
-                    errval = 2
-                if bond_list and angle_list:
-                    if (len(bond_list) + len(const_list)) < 2 and len(angle_list) > 0:
-                        errval = 6
-                    if (
-                        not ring_atoms
-                        and (len(bond_list) + len(const_list)) - len(angle_list) != 1
-                    ):
-                        errval = 7
-
-
-                self.topout, bartender_input_info = topology.topout(header_write,atoms_write,bonds_write,angles_write) # AutoM3 change : possible simple output w/o dihedrals, virtual sites
-                
-                # check if fusion of cycles
-                common = False
-                if len(ring_atoms)>1:
-                    cpt = list(set.intersection(*map(set, ring_atoms)))
-                    if len(cpt)>1 : common=True
-                    for i in ring_atoms:
-                        if len(i)>6 : common=True
-                else:
-                    if len(ring_atoms_flat)>6 : common=True
-
-                ### AutoM3 outputs ###
-
-                if len(ring_atoms_flat)>0 and not simple_model:
-                    if len(ring_atoms_flat)>7 and common:
-                        vs_write, virtual_sites, rigid_dih  = topology.print_virtualsites(ring_atoms,self.cg_bead_coords,self.atom_partitioning,molecule)
-                        
-                        self.topout, vs_bead_names, bartender_input_info  = topology.topout_vs(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites,vs_write,rigid_dih,simple_model)
-                    
-                    else:
-                        self.topout, bartender_input_info = topology.topout_noVS(header_write, atoms_write, bonds_write, angles_write, dihedrals_write, self.cg_bead_coords, ring_atoms, cg_beads)
-                
-                if bartender:
-                    bartender_out = topology.bartender_input(molecule, molname, atoms_in_smi, bartender_input_info)
-                    with open(bartenderfname, "w") as btf:
-                        btf.write(bartender_out)
-                
-                if topfname:
-                    with open(topfname, "w") as fp:
-                        fp.write(self.topout)
-                if not force_map: print("Converged to solution in {} iteration(s)".format(attempt + 1))
-                if force_map: print("Converged to solution in {} iteration(s)".format(attempt + 1 + max_attempts))
-                break
-            else:
-                attempt += 1
-        
-                # AutoM3 change : force mapping by old code if new code doesn't give result
-                if attempt == max_attempts and not force_map:
-                    force_map=True
-                    attempt = 0 
+            if passed:
+                self._write_topology(mol, options, cg_beads, cg_beads_rings)
+                print("Converged to solution in {} iteration(s)".format(
+                    attempt + 1 + (max_attempts if force_map else 0)))
+                return
+            attempt += 1
+            # AutoM3 change : force mapping by old code if new code doesn't give result
+            if attempt == max_attempts and not force_map:
+                force_map = True
+                attempt = 0
 
         if attempt == max_attempts and force_map:
             raise RuntimeError(
                 "ERROR: no successful mapping found.\nTry running with the --fpred and/or --verbose options."
             )
+
+    def _check_candidate(self, mol, options, cg_beads, bead_pos, best_cg_beads, force_map, ring_limit_reachable):
+        """Partition the atoms between the beads of one candidate and run every check on it.
+
+        Sets atom_partitioning, cg_bead_coords and cg_bead_names for this candidate.
+        Returns (passed, cg_beads_rings).
+        """
+        success = True
+        # Remove mappings with bead numbers less than most optimal mapping.
+        if len(cg_beads) < len(best_cg_beads) and (len(mol.heavy_atoms) - (5 * len(cg_beads))) > 3:
+            success = False
+
+        # AutoM3 : newer partitioning for molecules with few aromatic atoms, the older one otherwise
+        cg_bead_coords = get_coords(mol.conformer, cg_beads, bead_pos, mol.ring_atoms_flat)
+        voronoi = (optimization.voronoi_atoms_new if not force_map and mol.num_arom < 7
+                   else optimization.voronoi_atoms_old)
+        self.atom_partitioning, self.cg_bead_coords = voronoi(
+            cg_bead_coords, self.heavy_atom_coords, self.atom_coords, mol.molecule, ring_groups=mol.ring_groups
+        )
+
+        # AutoM3 checks: at most 2 ring atoms per bead and the fused-ring template, and
+        # functional groups kept whole. force_map tolerates one failed check (and then
+        # overrides the bead-number rule above); otherwise none may fail.
+        # The 2-ring-atoms-per-bead limit only applies with an even number of aromatic
+        # atoms (an odd ring can't be split that way) and when some candidate has enough
+        # beads for it; the fused-ring template applies to any fused system, aromatic or not.
+        fails = 0
+        if mol.is_arom or mol.ring_groups:
+            if not optimization.max2arperbead(self.atom_partitioning, mol.ring_atoms, ring_groups=mol.ring_groups,
+                                              ring_atom_limit=mol.is_arom and (mol.num_arom % 2) == 0
+                                              and ring_limit_reachable):
+                fails += 1
+        if not optimization.functional_groups_ok(self.atom_partitioning, mol.molecule, mol.ring_atoms):
+            fails += 1
+        if force_map:
+            success = fails <= 1
+        elif fails > 0:
+            success = False
+
+        logger.info("; Atom partitioning: {atom_partitioning}")
+
+        # cgbeads should take atom rings number if ring atom in bead
+        cg_beads_rings = cg_beads.copy()
+        for i, b in enumerate(cg_beads):
+            if b not in mol.ring_atoms_flat:
+                atoms_in_b = [at for at, bd in self.atom_partitioning.items() if bd == i]
+                for a in atoms_in_b:
+                    if a in mol.ring_atoms_flat:
+                        cg_beads_rings[i] = a
+
+        # Bead types, and the additivity check between fragments and entire molecule
+        self.cg_bead_names, bead_types, _, _ = topology.print_atoms(
+            options.molname, options.forcepred, cg_beads, mol.molecule, mol.hbond_a, mol.hbond_d,
+            self.atom_partitioning, mol.ring_atoms, mol.ring_atoms_flat, options.logp_file, True,
+        )
+        if not self.cg_bead_names:
+            success = False
+        if not check_additivity(options.forcepred, bead_types, mol.molecule, options.mol_smi):
+            success = False
+
+        # Bond count: a tree of beads (or more links with rings), and one name per bead
+        bond_list, const_list, _ = topology.print_bonds(
+            cg_beads, cg_beads_rings, mol.molecule, self.atom_partitioning, self.cg_bead_coords, bead_types,
+            mol.ring_atoms, trial=True,
+        )
+        num_links = len(bond_list) + len(const_list)
+        if not mol.ring_atoms and num_links >= len(self.cg_bead_names):
+            success = False
+        if num_links < len(self.cg_bead_names) - 1:
+            success = False
+        if len(cg_beads) != len(self.cg_bead_names):
+            success = False
+        return success, cg_beads_rings
+
+    def _write_topology(self, mol, options, cg_beads, cg_beads_rings):
+        """Build the topology of the accepted candidate (self.topout) and write the requested files."""
+        header_write = topology.print_header(options.molname, options.mol_smi)
+        self.cg_bead_names, bead_types, atoms_write, atoms_in_smi = topology.print_atoms( # AutoM3 new variable : atoms_in_smi
+            options.molname, options.forcepred, cg_beads, mol.molecule, mol.hbond_a, mol.hbond_d,
+            self.atom_partitioning, mol.ring_atoms, mol.ring_atoms_flat, options.logp_file, trial=False,
+        )
+        bond_list, const_list, bonds_write = topology.print_bonds(
+            cg_beads, cg_beads_rings, mol.molecule, self.atom_partitioning, self.cg_bead_coords, bead_types,
+            mol.ring_atoms, False,
+        )
+        if not options.simple_model: # AutoM3
+            dihedrals_write = topology.print_dihedrals(
+                cg_beads, const_list, mol.ring_atoms, self.cg_bead_coords, bead_types
+            )
+        angles_write, angle_list = topology.print_angles(
+            cg_beads, mol.molecule, self.atom_partitioning, self.cg_bead_coords, bead_types, bond_list, const_list,
+            mol.ring_atoms,
+        )
+        # AutoM3 change : possible simple output w/o dihedrals, virtual sites
+        self.topout, bartender_input_info = topology.topout(header_write, atoms_write, bonds_write, angles_write)
+
+        # Fused ring systems (or rings larger than 6) get virtual sites
+        if len(mol.ring_atoms) > 1:
+            common = (len(set.intersection(*map(set, mol.ring_atoms))) > 1
+                      or any(len(system) > 6 for system in mol.ring_atoms))
+        else:
+            common = len(mol.ring_atoms_flat) > 6
+
+        ### AutoM3 outputs ###
+        if len(mol.ring_atoms_flat) > 0 and not options.simple_model:
+            if len(mol.ring_atoms_flat) > 7 and common:
+                vs_write, virtual_sites, rigid_dih = topology.print_virtualsites(
+                    mol.ring_atoms, self.cg_bead_coords, self.atom_partitioning, mol.molecule
+                )
+                self.topout, vs_bead_names, bartender_input_info = topology.topout_vs(
+                    header_write, atoms_write, bonds_write, angles_write, dihedrals_write, virtual_sites, vs_write,
+                    rigid_dih, options.simple_model,
+                )
+            else:
+                self.topout, bartender_input_info = topology.topout_noVS(
+                    header_write, atoms_write, bonds_write, angles_write, dihedrals_write, self.cg_bead_coords,
+                    mol.ring_atoms, cg_beads,
+                )
+
+        if options.bartender:
+            bartender_out = topology.bartender_input(mol.molecule, options.molname, atoms_in_smi, bartender_input_info)
+            with open(options.bartenderfname, "w") as btf:
+                btf.write(bartender_out)
+        if options.topfname:
+            with open(options.topfname, "w") as fp:
+                fp.write(self.topout)
+
     def output_aa(self, aa_output=None): # AutoM3 change : molname is the same as argument --mol given at the beginning
         # Optional all-atom output to GRO file
         aa_out = output.output_gro(self.heavy_atom_coords, self.list_heavyatom_names, self.molname)

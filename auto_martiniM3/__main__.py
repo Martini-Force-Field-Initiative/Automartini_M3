@@ -81,51 +81,53 @@ parser.add_argument("--bartender",dest="bartender_output",action="store_true",re
 parser.add_argument("--simple",dest="simple_model",action="store_true",required=False,help="Simple model without dihedrals nor virtual sites") #AutoM3 change
 parser.add_argument("--canon",dest="canonic_smiles",action="store_true",required=False,help="Translate to RdKit canon structure") #AutoM3 change
 
-if len(sys.argv) == 1:
-    parser.print_help(sys.stderr)
-    sys.exit(1)
-
-args = parser.parse_args()
-
-checkArgs(args)
-
-if args.verbose >= 2:
-    level = logging.DEBUG
-elif args.verbose >= 1:
-    level = logging.INFO
-else:
-    level = logging.WARNING
-
-logging.basicConfig(
-    filename="auto_martiniM3.log",
-    format="%(asctime)s [%(levelname)s](%(name)s:%(funcName)s:%(lineno)d): %(message)s",
-    level=level,
-)
-
 logger = logging.getLogger(__name__)
 
-logger.info("Running auto_martiniM3 v{}".format(__version__))
 
-# Generate molecule's structure from SDF or SMILES
-if args.sdf:
-    mol = gen_molecule_sdf(args.sdf)
-    if args.canonic_smiles: smiles = str(Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles=False)))
-    else : smiles = str(Chem.MolToSmiles(mol, isomericSmiles=False))
-else:
-    if args.canonic_smiles: smiles = (Chem.CanonSmiles(args.smi))
-    else : smiles = args.smi 
-    mol, _ = gen_molecule_smi(smiles)
-    
-### AutoM3 change ###
-topname=args.molname+".itp"
-groname=args.molname+".gro"
-bartenderfname=""
+def main():
+    """Command line entry point: python -m auto_martiniM3 --smi SMILES --mol NAME [options]"""
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
-if args.bartender_output:
-    bartenderfname=args.molname+"_bartender.inp"
-    cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
-else:
-    cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname, args.bartender_output, args.logp, args.forcepred)
-if args.aa:
-    cg.output_aa(args.aa)
-cg.output_cg(groname)
+    args = parser.parse_args()
+    checkArgs(args)
+
+    if args.verbose >= 2:
+        level = logging.DEBUG
+    elif args.verbose >= 1:
+        level = logging.INFO
+    else:
+        level = logging.WARNING
+    logging.basicConfig(
+        filename="auto_martiniM3.log",
+        format="%(asctime)s [%(levelname)s](%(name)s:%(funcName)s:%(lineno)d): %(message)s",
+        level=level,
+    )
+    logger.info("Running auto_martiniM3 v{}".format(__version__))
+
+    # Generate molecule's structure from SDF or SMILES
+    if args.sdf:
+        mol = gen_molecule_sdf(args.sdf)
+        if args.canonic_smiles: smiles = str(Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles=False)))
+        else : smiles = str(Chem.MolToSmiles(mol, isomericSmiles=False))
+    else:
+        if args.canonic_smiles: smiles = (Chem.CanonSmiles(args.smi))
+        else : smiles = args.smi
+        mol, _ = gen_molecule_smi(smiles)
+
+    ### AutoM3 change ###
+    topname = args.molname + ".itp"
+    groname = args.molname + ".gro"
+    bartenderfname = args.molname + "_bartender.inp" if args.bartender_output else ""
+    cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname,
+                            args.bartender_output, args.logp, args.forcepred)
+    if args.aa:
+        cg.output_aa(args.aa)
+    cg.output_cg(groname)
+
+
+# The guard keeps worker processes started by "spawn" (default on macOS and
+# Windows), which re-import this module, from running the command line again.
+if __name__ == "__main__":
+    main()
