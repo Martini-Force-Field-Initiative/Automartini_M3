@@ -145,6 +145,12 @@ class Cg_molecule:
             force_map # AutoM3 new argument
         )
 
+        # A bead holds at most 2 ring atoms, so that limit can only be met by a candidate with
+        # at least ceil(ring atoms / 2) beads. When no candidate is that large (e.g. anthracene,
+        # bithiophene) every candidate would fail it until the force_map fallback, so skip it.
+        ring_limit_reachable = (max((len(c) for c in list_cg_beads), default=0)
+                                >= math.ceil(len(set(ring_atoms_flat)) / 2))
+
         # Loop through best 1% cg_beads and avg_pos
         max_attempts = int(math.ceil(0.5 * len(list_cg_beads)))
         logger.info(f"Max. number of attempts: {max_attempts}")
@@ -187,11 +193,13 @@ class Cg_molecule:
             fails=0
 
             # The 2-ring-atoms-per-bead limit only applies with an even number of
-            # aromatic atoms (an odd ring can't be split that way); the fused-ring
-            # template applies to any fused system, aromatic or not.
+            # aromatic atoms (an odd ring can't be split that way) and when some candidate
+            # has enough beads for it; the fused-ring template applies to any fused
+            # system, aromatic or not.
             if is_arom or ring_groups:
                 if not optimization.max2arperbead(self.atom_partitioning, ring_atoms, ring_groups=ring_groups,
-                                                  ring_atom_limit=is_arom and (num_arom % 2) == 0):
+                                                  ring_atom_limit=is_arom and (num_arom % 2) == 0
+                                                  and ring_limit_reachable):
                     fails += 1
 
             if not optimization.functional_groups_ok(self.atom_partitioning,molecule, ring_atoms):
