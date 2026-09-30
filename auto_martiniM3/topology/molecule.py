@@ -35,29 +35,37 @@ def gen_molecule_smi(smi):
         os.dup2(stderr_fd.fileno(), stderr_fileno)
     except Exception:
         stderr_fileno = None
-    # Get smiles without sanitization
-    molecule = Chem.MolFromSmiles(smi, False)
-    try:
-        cp = Chem.Mol(molecule)
-        Chem.SanitizeMol(cp)
-
-        # Close log file and restore old sys err
-        if stderr_fileno is not None:
+        if stderr_save is not None:
+            os.close(stderr_save)
+        if stderr_fd is not None:
             stderr_fd.close()
-            os.dup2(stderr_save, stderr_fileno)
-        molecule = cp
-    except ValueError:
-        logger.warning("Bad smiles format %s found" % smi)
-        nm = AdjustAromaticNs(molecule)
+    try:
+        # Get smiles without sanitization
+        molecule = Chem.MolFromSmiles(smi, False)
+        try:
+            cp = Chem.Mol(molecule)
+            Chem.SanitizeMol(cp)
+            molecule = cp
+        except ValueError:
+            logger.warning("Bad smiles format %s found" % smi)
+            nm = AdjustAromaticNs(molecule)
 
-        if nm is not None:
-            Chem.SanitizeMol(nm)
-            molecule = nm
-            smi = Chem.MolToSmiles(nm)
-            logger.warning("Fixed smiles format to %s" % smi)
-        else:
-            logger.warning("Smiles cannot be adjusted %s" % smi)
-            errval = 1
+            if nm is not None:
+                Chem.SanitizeMol(nm)
+                molecule = nm
+                smi = Chem.MolToSmiles(nm)
+                logger.warning("Fixed smiles format to %s" % smi)
+            else:
+                logger.warning("Smiles cannot be adjusted %s" % smi)
+                errval = 1
+    finally:
+        # Restore the old stderr on every path (the sanitize error one included), then
+        # close the log file and the saved copy of stderr: this runs for every bead of
+        # every search attempt, so an unclosed copy piles up until "Too many open files".
+        if stderr_fileno is not None:
+            os.dup2(stderr_save, stderr_fileno)
+            os.close(stderr_save)
+            stderr_fd.close()
     # Continue
     molecule = Chem.AddHs(molecule)
     AllChem.EmbedMolecule(molecule, randomSeed=1, useRandomCoords=True)  # Set Seed for random coordinate generation = 1.
