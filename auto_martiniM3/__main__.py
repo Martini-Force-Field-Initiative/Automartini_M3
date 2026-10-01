@@ -80,6 +80,9 @@ parser.add_argument("--fpred",dest="forcepred",action="store_true", required=Fal
 parser.add_argument("--bartender",dest="bartender_output",action="store_true",required=False,help="Bartender input file") #AutoM3 change
 parser.add_argument("--simple",dest="simple_model",action="store_true",required=False,help="Simple model without dihedrals nor virtual sites") #AutoM3 change
 parser.add_argument("--canon",dest="canonic_smiles",action="store_true",required=False,help="Translate to RdKit canon structure") #AutoM3 change
+parser.add_argument("--nproc", dest="nproc", type=int, default=None, required=False,
+                    help="Processes for the bead search (default: automatic, all CPUs for molecules of 20+ heavy "
+                         "atoms on Linux; 1 = sequential; also set by AUTOMARTINI_NPROC)")
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +124,7 @@ def main():
     groname = args.molname + ".gro"
     bartenderfname = args.molname + "_bartender.inp" if args.bartender_output else ""
     cg = solver.Cg_molecule(mol, smiles, args.molname, args.simple_model, topname, bartenderfname,
-                            args.bartender_output, args.logp, args.forcepred)
+                            args.bartender_output, args.logp, args.forcepred, nproc=args.nproc)
     if args.aa:
         cg.output_aa(args.aa)
     cg.output_cg(groname)

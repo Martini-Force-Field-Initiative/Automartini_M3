@@ -54,7 +54,7 @@ from .functional_groups import (
     functional_groups_ok,
     max2arperbead,
 )
-from .search import check_beads, find_bead_pos, all_atoms_in_beads_connected
+from .search import check_beads, find_bead_pos, all_atoms_in_beads_connected, worker_count
 
 __all__ = [
     "read_bead_params",
@@ -72,4 +72,5 @@ __all__ = [
     "check_beads",
     "find_bead_pos",
     "all_atoms_in_beads_connected",
+    "worker_count",
 ]

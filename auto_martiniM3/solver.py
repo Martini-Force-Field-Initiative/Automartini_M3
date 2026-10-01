@@ -97,6 +97,7 @@ class _RunOptions:
     bartender: bool
     logp_file: str
     forcepred: bool
+    nproc: int = None
 
 
 class _MoleculeData:
@@ -126,8 +127,10 @@ class Cg_molecule:
     write its topology.
     """
 
-    def __init__(self, molecule, mol_smi, molname, simple_model, topfname, bartenderfname, bartender, logp_file, forcepred=True):
+    def __init__(self, molecule, mol_smi, molname, simple_model, topfname, bartenderfname, bartender, logp_file, forcepred=True,
+                 nproc=None):
         # AutoM3 new arguments : mol_smi, simple_model, bartenderfname, bartender, logp_file
+        # nproc: processes for the bead search (None: automatic, see optimization.worker_count)
 
         self.heavy_atom_coords = None
         self.atom_coords = None # AutoM3 new variable
@@ -142,7 +145,7 @@ class Cg_molecule:
         logger.info("Entering cg_molecule()")
 
         options = _RunOptions(molname, mol_smi, simple_model, topfname, bartenderfname, bartender, logp_file,
-                              forcepred)
+                              forcepred, nproc)
         mol = _MoleculeData(self._embed(molecule))
         self.list_heavyatom_names = mol.heavy_atom_names
         self.heavy_atom_coords, self.atom_coords = mol.heavy_atom_coords, mol.atom_coords
@@ -173,7 +176,7 @@ class Cg_molecule:
         # wrong later in the code.
         list_cg_beads, list_bead_pos = optimization.find_bead_pos(
             mol.molecule, mol.conformer, mol.heavy_atoms, self.heavy_atom_coords, self.atom_coords,
-            mol.ring_atoms, mol.ring_atoms_flat, False,
+            mol.ring_atoms, mol.ring_atoms_flat, False, nproc=options.nproc,
         )
 
         # A bead holds at most 2 ring atoms, so that limit can only be met by a candidate with

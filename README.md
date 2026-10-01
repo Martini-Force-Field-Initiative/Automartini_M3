@@ -56,7 +56,7 @@ To display the usage-information (help), either supply -h, --help, or nothing to
  
 ```
 usage: auto_martiniM3 [-h] [--mode {run}] [--sdf SDF | --smi SMI] [--logp LOGP] [--mol MOLNAME] [--aa AA] [-v]
-                      [--fpred] [--bartender] [--simple] [--canon]
+                      [--fpred] [--bartender] [--simple] [--canon] [--nproc NPROC]
 
 Generates Martini 3 force field for atomistic structures of small organic molecules
 
@@ -73,6 +73,8 @@ optional arguments:
   --bartender    Bartender input file
   --simple       Simple model without dihedrals nor virtual sites
   --canon        Translate to RdKit canon structure
+  --nproc NPROC  Processes for the bead search (default: automatic, all CPUs for molecules of 20+ heavy atoms
+                 on Linux; 1 = sequential; also set by AUTOMARTINI_NPROC)
 
 Developers:
 ===========
@@ -81,6 +83,16 @@ Tristan Bereau (bereau [at] mpip-mainz.mpg.de)
 Kiran Kanekal (kanekal [at] mpip-mainz.mpg.de)
 Andrew Abi-Mansour (andrew.gaam [at] gmail.com)
 ```
+
+### Parallel bead search
+On Linux, the search over bead placements, which takes most of the time for large molecules, runs on all
+available CPUs for molecules of 20 heavy atoms or more (for instance, a whole run on a 29-heavy-atom molecule takes
+9 s instead of 73 s on 32 CPUs). The result is exactly the same as with a sequential search. Use `--nproc N` (or the
+environment variable `AUTOMARTINI_NPROC=N`) to choose the number of processes, and `--nproc 1` for a sequential
+search; on macOS and Windows the search is sequential unless `--nproc` is given. The search stays sequential with
+`-v`/`-vv`, so that the log lists every trial in order, and when auto_martiniM3 already runs inside a worker process
+of your own pool. A Python script passing `nproc` > 1 to `Cg_molecule` on macOS or Windows needs the usual
+`if __name__ == "__main__":` guard.
 
 ## Example
 To coarse-grain a molecule, simply provide its SMILES code (option `--smi SMI`) or a .SDF file (option `'--sdf file.sdf`). You also need to provide a name for the CG molecule (not longer than 5 characters) using the `--mol` option.  For instance, to coarse grain [aspirin](https://pubchem.ncbi.nlm.nih.gov/compound/2244#section=2D-Structure), you can either obtain/generate (e.g., from Open Babel) an SDF file:

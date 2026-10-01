@@ -9,8 +9,18 @@ returns every valid combination sorted by score. BeadSearch holds the data
 computed once per molecule that all those trials share.
 """
 
+import concurrent.futures
+import contextlib
+import ctypes
+import gc
+import multiprocessing
+import signal
+
+from rdkit.Geometry import Point3D
+
 from ..common import *
 from .. import topology
+from . import energy, partition
 from .energy import GaussianTermCache, eval_gaussian_interac
 from .partition import (HeavyAtomGeometry, _heavy_neighbor_map, fused_ring_groups, voronoi_atoms_new,
                         voronoi_atoms_old)
@@ -103,7 +113,7 @@ def check_beads(
     return acceptable_trial
 
 
-def _valid_bead_combinations(num_atoms, num_beads, adjacency, terminal_partner):
+def _valid_bead_combinations(num_atoms, num_beads, adjacency, terminal_partner, prefix=(), depth=None):
     """Yield, as tuples of positions in 0..num_atoms-1, exactly the num_beads-sized
     combinations that check_beads() accepts, in itertools.combinations order.
 
@@ -113,13 +123,24 @@ def _valid_bead_combinations(num_atoms, num_beads, adjacency, terminal_partner):
     pairwise, so a depth-first search that picks positions in increasing order
     can prune a partial combination the moment it breaks one -- instead of
     building every combination and rejecting ~97% of them afterwards.
+
+    prefix: only the combinations starting with these positions (itself a partial
+    combination this function yields). depth: stop at partial combinations of
+    that length. Together they split the search into subtrees that, taken in
+    order, give back the full sequence.
     """
-    combo = []
+    target = num_beads if depth is None else depth
+    combo = list(prefix)
     blocked = [0] * num_atoms
     partners_in_use = Counter()
+    for p in prefix:
+        for q in adjacency[p]:
+            blocked[q] += 1
+        if terminal_partner[p] is not None:
+            partners_in_use[terminal_partner[p]] += 1
 
     def extend(start):
-        if len(combo) == num_beads:
+        if len(combo) == target:
             yield tuple(combo)
             return
         last_start = num_atoms - (num_beads - len(combo))
@@ -141,7 +162,15 @@ def _valid_bead_combinations(num_atoms, num_beads, adjacency, terminal_partner):
             if partner is not None:
                 partners_in_use[partner] -= 1
 
-    yield from extend(0)
+    yield from extend(prefix[-1] + 1 if prefix else 0)
+
+
+def _rebuild_bead_search(molecule, conformer_id, atom_xyz, *args):
+    """Unpickling helper of BeadSearch: puts back the exact atom coordinates."""
+    conformer = molecule.GetConformer(conformer_id)
+    for i, xyz in enumerate(atom_xyz):
+        conformer.SetAtomPosition(i, Point3D(*xyz))
+    return BeadSearch(molecule, conformer, *args)
 
 
 class BeadSearch:
@@ -194,18 +223,34 @@ class BeadSearch:
         # Atom positions as the Python floats GetAtomPosition() returns.
         self.atom_xyz = [tuple(conformer.GetAtomPosition(i)[m] for m in range(3))
                          for i in range(conformer.GetNumAtoms())]
+        # Per position in list_heavy_atoms: the atom as the np.int64 trial_comb holds,
+        # and its coordinates. Combinations list positions in increasing order, so with
+        # heavy atoms in increasing index order (as get_atoms() lists them) a
+        # trial_comb is already sorted.
+        self._heavy_atom_items = list(self.heavy_atoms_array)
+        self._heavy_xyz = [self.atom_xyz[int(atom)] for atom in list_heavy_atoms]
+        self._heavy_atoms_increasing = all(a < b for a, b in zip(list_heavy_atoms, list_heavy_atoms[1:]))
 
-    def combinations(self, num_beads):
+    def __reduce__(self):
+        # Rebuilt from its constructor arguments in another process. RDKit pickles
+        # conformer coordinates in single precision, so the exact ones travel along.
+        return (_rebuild_bead_search, (self.molecule, self.conformer.GetId(), self.atom_xyz, self.list_heavy_atoms,
+                                       self.heavyatom_coords, self.allatom_coords, self.ringatoms_flat,
+                                       self.force_map))
+
+    def combinations(self, num_beads, prefix=(), depth=None):
         """Positions (in list_heavy_atoms) of every num_beads-bead combination
-        check_beads() accepts, in itertools.combinations order."""
+        check_beads() accepts, in itertools.combinations order -- or only the
+        subtree under prefix, or partial combinations of length depth (see
+        _valid_bead_combinations)."""
         return _valid_bead_combinations(len(self.list_heavy_atoms), num_beads, self.adjacency,
-                                        self.terminal_partner)
+                                        self.terminal_partner, prefix, depth)
 
     def connected_combinations(self, combinations):
         """Score each combination of positions and yield, in the same order,
-        (trial_comb, energy) for those whose beads would hold connected atoms."""
+        (positions, trial_comb, energy) for those whose beads would hold connected atoms."""
         for positions in combinations:
-            trial_comb = list(self.heavy_atoms_array[list(positions)])
+            trial_comb = self.trial_comb(positions)
             trial_ene = eval_gaussian_interac(self.molecule, self.conformer, trial_comb, self.ringatoms_flat,
                                               cache=self.energy_cache)
             logger.info("; %s %s", trial_comb, trial_ene)
@@ -214,18 +259,207 @@ class BeadSearch:
                 self.allatom_coords, self.force_map, heavy_index=self.heavy_index, num_arom=self.num_arom,
                 heavy_neighbor_of=self.heavy_neighbor_of, geometry=self.geometry, ring_groups=self.ring_groups,
             ):
-                yield trial_comb, trial_ene
+                yield positions, trial_comb, trial_ene
 
-    def bead_positions(self, trial_comb):
-        """Coordinates of the beads of trial_comb, in sorted atom order."""
+    def trial_comb(self, positions):
+        """Heavy atoms at these positions, as a list of np.int64."""
+        return [self._heavy_atom_items[p] for p in positions]
+
+    def bead_positions(self, positions, trial_comb):
+        """Coordinates of the beads of trial_comb (at these increasing positions), in sorted atom order."""
+        if self._heavy_atoms_increasing:
+            return [list(self._heavy_xyz[p]) for p in positions]
         return [list(self.atom_xyz[int(atom)]) for atom in sorted(trial_comb)]
+
+    def scored_level(self, num_beads):
+        """(trial_comb, bead positions, energy) of every connected num_beads-bead
+        combination, in enumeration order."""
+        for positions, trial_comb, trial_ene in self.connected_combinations(self.combinations(num_beads)):
+            yield trial_comb, self.bead_positions(positions, trial_comb), trial_ene
+
+    def unpack(self, positions, energies):
+        """Same as scored_level() for the part a worker scored: positions is its
+        (combinations x beads) array, energies the matching energies."""
+        for row, trial_ene in zip(positions.tolist(), energies.tolist()):
+            trial_comb = self.trial_comb(row)
+            yield trial_comb, self.bead_positions(row, trial_comb), trial_ene
+
+
+# ---------------------------------------------------------------------------
+# Parallel search
+#
+# The trial combinations are independent, so each bead-count level is split
+# into subtrees of the enumeration (by combination prefix), scored in worker
+# processes, and put back together in enumeration order: the result is the
+# same, element for element, as the sequential search. Processes, not threads:
+# the search is pure Python, which threads can't run in parallel.
+# ---------------------------------------------------------------------------
+
+NPROC_ENV = "AUTOMARTINI_NPROC"
+# Automatic mode stays sequential below this many heavy atoms: the whole search
+# then takes less time than starting the worker processes.
+PARALLEL_MIN_HEAVY_ATOMS = 20
+# Subtrees per worker, so that uneven subtrees still keep every worker busy.
+_TASKS_PER_WORKER = 8
+
+_worker_search = None  # the BeadSearch of the current molecule, in a worker process
+
+
+def available_cpus():
+    """Number of CPUs this process may run on."""
+    try:
+        return len(os.sched_getaffinity(0))
+    except AttributeError:  # not on Linux
+        return os.cpu_count() or 1
+
+
+def worker_count(nproc, num_heavy_atoms):
+    """Number of processes for the bead search; 1 means sequential.
+
+    nproc: requested number, or None for automatic, in which case the
+    AUTOMARTINI_NPROC environment variable is used if set (a number, or "auto").
+    Automatic mode uses every available CPU for molecules of at least
+    PARALLEL_MIN_HEAVY_ATOMS heavy atoms, on Linux only, and not when already
+    running in a worker process of the caller (its own pool of molecules). The
+    search stays sequential anyway when it logs at INFO level or below (the
+    per-combination log keeps its order) and inside a daemonic process, which
+    can't start workers.
+    """
+    return _pool_setup(nproc, num_heavy_atoms)[0]
+
+
+def _pool_setup(nproc, num_heavy_atoms):
+    """(number of processes, multiprocessing context) for the bead search, see worker_count().
+
+    Automatic mode starts its workers with fork: they then don't re-import the
+    caller's main script, which "spawn" (the default on macOS and Windows) does
+    and which fails for a script without an if __name__ == "__main__" guard.
+    An explicit nproc uses the platform's default start method.
+    """
+    if nproc is None:
+        requested = os.environ.get(NPROC_ENV, "").strip().lower()
+        if requested not in ("", "auto"):
+            try:
+                nproc = int(requested)
+            except ValueError:
+                raise ValueError(f"{NPROC_ENV} must be a number of processes or 'auto', not {requested!r}")
+    context = None
+    if nproc is None:
+        if (num_heavy_atoms < PARALLEL_MIN_HEAVY_ATOMS or not sys.platform.startswith("linux")
+                or multiprocessing.parent_process() is not None):
+            return 1, None
+        nproc, context = available_cpus(), multiprocessing.get_context("fork")
+    search_logs = any(log.isEnabledFor(logging.INFO) for log in (logger, energy.logger, partition.logger))
+    if nproc <= 1 or search_logs or multiprocessing.current_process().daemon:
+        return 1, None
+    return nproc, context
+
+
+def _start_worker(search):
+    """Pool initializer: keep the molecule's BeadSearch for the tasks of this worker."""
+    global _worker_search
+    _worker_search = search
+    gc.enable()  # a forked worker inherits the parent's paused collector (_gc_paused)
+    if sys.platform.startswith("linux"):
+        # Terminate with the parent even when it is killed outright (e.g. by a time limit),
+        # instead of lingering as an orphan. 1 = PR_SET_PDEATHSIG.
+        try:
+            ctypes.CDLL(None).prctl(1, signal.SIGTERM)
+        except (OSError, AttributeError):
+            pass
+
+
+def _connected_in_subtree(task):
+    """Worker task: positions and energies of the connected combinations of one
+    subtree, in enumeration order. An exception (SystemExit included) is
+    returned rather than raised, for the parent to raise it again."""
+    num_beads, prefix = task
+    try:
+        search = _worker_search
+        found = [(positions, trial_ene) for positions, _, trial_ene
+                 in search.connected_combinations(search.combinations(num_beads, prefix))]
+        # Two arrays pickle far faster than a list of tuples; float64 keeps the energies exact.
+        positions = np.array([p for p, _ in found], dtype=np.int32).reshape(len(found), num_beads)
+        energies = np.array([e for _, e in found], dtype=np.float64)
+        return positions, energies
+    except BaseException as error:
+        return error
+
+
+def _subtree_prefixes(search, num_beads, workers):
+    """Split one bead-count level into subtrees, in enumeration order: the
+    shortest prefixes that give at least _TASKS_PER_WORKER subtrees per worker."""
+    depth = 1
+    prefixes = list(search.combinations(num_beads, depth=depth))
+    while len(prefixes) < _TASKS_PER_WORKER * workers and depth < num_beads - 1:
+        depth += 1
+        prefixes = list(search.combinations(num_beads, depth=depth))
+    return prefixes
+
+
+class _ParallelLevels:
+    """Bead-count levels scored by a process pool. While the parent goes
+    through the results of one level, the workers already score the next one
+    (dropped if the search stops before it). Submitted subtrees are never
+    cancelled: with Python 3.8 cancelling pending futures can make the pool's
+    shutdown wait forever, so an unneeded level is scored to the end instead."""
+
+    def __init__(self, search, pool, workers, levels):
+        self.search, self.pool, self.workers, self.levels = search, pool, workers, levels
+        self.futures = {}  # level index -> futures of its subtrees, in order
+
+    def _submit(self, index):
+        if index < len(self.levels) and index not in self.futures:
+            num_beads = self.levels[index]
+            self.futures[index] = [self.pool.submit(_connected_in_subtree, (num_beads, prefix))
+                                   for prefix in _subtree_prefixes(self.search, num_beads, self.workers)]
+
+    def scored_level(self, index):
+        """Same as search.scored_level(levels[index])."""
+        self._submit(index)
+        self._submit(index + 1)
+        for future in self.futures[index]:
+            result = future.result()
+            if isinstance(result, BaseException):
+                raise result
+            yield from self.search.unpack(*result)
+        del self.futures[index]
+
+
+@contextlib.contextmanager
+def _gc_paused():
+    """Pause the cyclic garbage collector. The search piles up millions of small
+    lists, none in a reference cycle, and the collector would otherwise go over
+    all of them again and again as they accumulate."""
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+    finally:
+        if was_enabled:
+            gc.enable()
+
+
+@contextlib.contextmanager
+def _level_scorer(search, levels, workers, context):
+    """Function giving the scored candidates of levels[index], computed in this
+    process or, with more than one worker, in a process pool."""
+    if workers <= 1:
+        yield lambda index: search.scored_level(levels[index])
+        return
+    with concurrent.futures.ProcessPoolExecutor(max_workers=workers, mp_context=context, initializer=_start_worker,
+                                                initargs=(search,)) as pool:
+        yield _ParallelLevels(search, pool, workers, levels).scored_level
 
 
 def find_bead_pos(
-    molecule, conformer, list_heavy_atoms, heavyatom_coords, allatom_coords, ring_atoms, ringatoms_flat, force_map
+    molecule, conformer, list_heavy_atoms, heavyatom_coords, allatom_coords, ring_atoms, ringatoms_flat, force_map,
+    nproc=None,
 ):
     """Try out all possible combinations of CG beads up to threshold number of beads per atom. Find
-    arrangement with best energy score. Return all possible arrangements sorted by energy score."""
+    arrangement with best energy score. Return all possible arrangements sorted by energy score.
+
+    nproc: number of processes for the search (None: automatic, see worker_count())."""
 
     logger.debug("Entering find_bead_pos()")
 
@@ -247,30 +481,31 @@ def find_bead_pos(
     search = BeadSearch(molecule, conformer, list_heavy_atoms, heavyatom_coords, allatom_coords, ringatoms_flat,
                         force_map)
 
-    # In Martini 3 a bead covers 2 to 4 heavy atoms.
+    # In Martini 3 a bead covers 2 to 4 heavy atoms. With fewer than 4 heavy atoms
+    # min_beads is 0 and that level runs as 1 bead, so the 1-bead level is scored
+    # twice and its candidates are listed twice.
     min_beads = int(len(list_heavy_atoms) / 4.0)
     max_beads = int(len(list_heavy_atoms) / 2.0)
+    levels = [max(num_beads, 1) for num_beads in range(min_beads, max_beads + 1)]
 
     candidates = []  # [trial_comb, bead positions, energy] of every connected combination
     best_trial_comb, ene_best_trial = [], 1e6
     last_best_trial_comb = []
-    for num_beads in range(min_beads, max_beads + 1):
-        # With fewer than 4 heavy atoms min_beads is 0 and that level runs as 1 bead,
-        # so the 1-bead level is scored twice and its candidates are listed twice.
-        if num_beads == 0:
-            num_beads = 1
-        for trial_comb, trial_ene in search.connected_combinations(search.combinations(num_beads)):
-            if trial_ene < ene_best_trial:
-                ene_best_trial = trial_ene
-                best_trial_comb = sorted(trial_comb)
-            candidates.append([trial_comb, search.bead_positions(trial_comb), trial_ene])
+    workers, context = _pool_setup(nproc, len(list_heavy_atoms))
+    with _gc_paused(), _level_scorer(search, levels, workers, context) as scored_level:
+        for index in range(len(levels)):
+            for trial_comb, bead_pos, trial_ene in scored_level(index):
+                if trial_ene < ene_best_trial:
+                    ene_best_trial = trial_ene
+                    best_trial_comb = sorted(trial_comb)
+                candidates.append([trial_comb, bead_pos, trial_ene])
 
-        # Stop adding beads once one more bead no longer changes the best combination.
-        if last_best_trial_comb == best_trial_comb:
-            break
-        last_best_trial_comb = best_trial_comb
+            # Stop adding beads once one more bead no longer changes the best combination.
+            if last_best_trial_comb == best_trial_comb:
+                break
+            last_best_trial_comb = best_trial_comb
 
-    sorted_combs = np.array(sorted(candidates, key=itemgetter(2)), dtype="object")
+        sorted_combs = np.array(sorted(candidates, key=itemgetter(2)), dtype="object")
     return sorted_combs[:, 0], sorted_combs[:, 1]
 
 
