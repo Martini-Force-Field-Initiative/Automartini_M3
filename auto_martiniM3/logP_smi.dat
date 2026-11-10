@@ -34,7 +34,6 @@ ccS	5.3
 cSc	5.3
 Scc	5.3
 c(CS)c	10.1
-CS	3.6
 SC	3.6
 CSC	5.3
 CCS	5.3
@@ -55,7 +54,6 @@ ccCl	8.0
 CCl	5.4
 CCCl	8
 CCCCl	13.9
-CCl	5.4
 ClCC	8
 CC(Cl)C	13.9
 cc(c)Cl	13.9
@@ -68,7 +66,6 @@ CC(Br)C	12.7
 I	7.6
 CI	9.4
 CCI	14.3
-I	7.6
 IC	9.4
 cI	7.6
 ccI	9.4
@@ -79,7 +76,6 @@ CN	-4.1
 CCN	-2.5
 CNC	3.6
 CCCN	1
-CN	-2.9
 cn	-2.8
 nn	-5.0
 NC=O	-6.9
@@ -99,25 +95,18 @@ CCO	0.2
 cco	3.8
 CCOC	3.8
 COCC	3.8
-OC	-3.1
-CO	-3.1
 COC	-1.8
 CCO	-1.8
 C=O	-2.8
 CC=O	-1
 CCC=O	2.2
 CC(C)O	9.9
-C=O	-2.8
 OCC	-1
 CC(=O)C	2.2
 C(=O)O	-1.2
 C(=O)O	1.1
 CC(=O)O	4.3
-CO	-7.2
-CCO	-5.2
 CCCO	-2
-CO	-7.2
-OCC	-5.2
 CC(O)C	-2
 cO	-6.1
 ccO	-4.2
