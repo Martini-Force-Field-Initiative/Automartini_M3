@@ -57,6 +57,7 @@ To display the usage-information (help), either supply -h, --help, or nothing to
 ```
 usage: auto_martiniM3 [-h] [--mode {run}] [--sdf SDF | --smi SMI] [--logp LOGP] [--mol MOLNAME] [--aa AA] [-v]
                       [--fpred] [--bartender] [--simple] [--canon] [--nproc NPROC]
+                      [--search {branch-and-bound,exhaustive}]
 
 Generates Martini 3 force field for atomistic structures of small organic molecules
 
@@ -73,8 +74,11 @@ optional arguments:
   --bartender    Bartender input file
   --simple       Simple model without dihedrals nor virtual sites
   --canon        Translate to RdKit canon structure
-  --nproc NPROC  Processes for the bead search (default: automatic, all CPUs for molecules of 20+ heavy atoms
-                 on Linux; 1 = sequential; also set by AUTOMARTINI_NPROC)
+  --nproc NPROC  Processes for the exhaustive bead search (default: automatic, all CPUs for molecules of 20+
+                 heavy atoms on Linux; 1 = sequential; also set by AUTOMARTINI_NPROC)
+  --search {branch-and-bound,exhaustive}
+                 Bead search (default: branch-and-bound, which gives the same result as the exhaustive one;
+                 also set by AUTOMARTINI_SEARCH)
 
 Developers:
 ===========
@@ -84,8 +88,21 @@ Kiran Kanekal (kanekal [at] mpip-mainz.mpg.de)
 Andrew Abi-Mansour (andrew.gaam [at] gmail.com)
 ```
 
+### Bead search
+The bead placements are ranked by the score of their Gaussian objective function, and the solver tries them from
+the best one until one passes all its checks -- usually the very first. By default (`--search branch-and-bound`)
+they are found best first, without scoring every possible placement: the search goes through the same tree of
+placements as the exhaustive search, but opens a branch only if a lower bound of the score its placements can reach
+beats the next candidate, and stops as soon as the solver has the candidates it asks for. The candidates, their
+order and therefore the result are exactly those of the exhaustive search, on a single CPU and much faster: on a
+29-heavy-atom molecule the search takes 1.2 s instead of 64 s (or 6.6 s on 32 CPUs), and molecules of 40-44 heavy
+atoms take seconds to minutes instead of hours. When the solver needs more than 1000 candidates, or the search
+would keep too many open branches in memory, it goes on with the exhaustive search, which gives the same list.
+`--search exhaustive` (or `AUTOMARTINI_SEARCH=exhaustive`) scores every placement, as before; so does `-v`/`-vv`,
+whose log lists every trial.
+
 ### Parallel bead search
-On Linux, the search over bead placements, which takes most of the time for large molecules, runs on all
+On Linux, the exhaustive search over bead placements runs on all
 available CPUs for molecules of 20 heavy atoms or more (for instance, a whole run on a 29-heavy-atom molecule takes
 9 s instead of 73 s on 32 CPUs). The result is exactly the same as with a sequential search. Use `--nproc N` (or the
 environment variable `AUTOMARTINI_NPROC=N`) to choose the number of processes, and `--nproc 1` for a sequential

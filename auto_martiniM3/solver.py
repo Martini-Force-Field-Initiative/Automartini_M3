@@ -98,6 +98,7 @@ class _RunOptions:
     logp_file: str
     forcepred: bool
     nproc: int = None
+    search: str = None
 
 
 class _MoleculeData:
@@ -121,16 +122,17 @@ class _MoleculeData:
 class Cg_molecule:
     """Main class to coarse-grain molecule.
 
-    Building it runs the whole mapping: embed the molecule in 3D, score every
-    candidate bead placement (optimization.find_bead_pos), then try the
-    candidates from best to worst score until one passes all the checks, and
-    write its topology.
+    Building it runs the whole mapping: embed the molecule in 3D, rank the
+    candidate bead placements by score (optimization.bead_candidates), then try
+    them from best to worst until one passes all the checks, and write its
+    topology.
     """
 
     def __init__(self, molecule, mol_smi, molname, simple_model, topfname, bartenderfname, bartender, logp_file, forcepred=True,
-                 nproc=None):
+                 nproc=None, search=None):
         # AutoM3 new arguments : mol_smi, simple_model, bartenderfname, bartender, logp_file
-        # nproc: processes for the bead search (None: automatic, see optimization.worker_count)
+        # nproc: processes for the exhaustive bead search (None: automatic, see optimization.worker_count)
+        # search: "branch-and-bound" or "exhaustive" (None: automatic, see optimization.search_method)
 
         self.heavy_atom_coords = None
         self.atom_coords = None # AutoM3 new variable
@@ -145,7 +147,7 @@ class Cg_molecule:
         logger.info("Entering cg_molecule()")
 
         options = _RunOptions(molname, mol_smi, simple_model, topfname, bartenderfname, bartender, logp_file,
-                              forcepred, nproc)
+                              forcepred, nproc, optimization.search_method(search))
         mol = _MoleculeData(self._embed(molecule))
         self.list_heavyatom_names = mol.heavy_atom_names
         self.heavy_atom_coords, self.atom_coords = mol.heavy_atom_coords, mol.atom_coords
@@ -172,41 +174,47 @@ class Cg_molecule:
         half passes, the same candidates are tried again in force_map mode: older
         partitioning, and one failed check tolerated.
         """
-        # Optimize coarse-grained bead positions -- keep all possibilities in case something goes
-        # wrong later in the code.
-        list_cg_beads, list_bead_pos = optimization.find_bead_pos(
+        # Candidate bead positions, best first -- all of them in case something goes wrong later
+        # in the code. The branch-and-bound search only builds the ones the loop below asks for.
+        candidates = optimization.bead_candidates(
             mol.molecule, mol.conformer, mol.heavy_atoms, self.heavy_atom_coords, self.atom_coords,
-            mol.ring_atoms, mol.ring_atoms_flat, False, nproc=options.nproc,
+            mol.ring_atoms, mol.ring_atoms_flat, method=options.search, nproc=options.nproc,
         )
 
         # A bead holds at most 2 ring atoms, so that limit can only be met by a candidate with
         # at least ceil(ring atoms / 2) beads. When no candidate is that large (e.g. anthracene,
         # bithiophene) every candidate would fail it until the force_map fallback, so skip it.
-        ring_limit_reachable = (max((len(c) for c in list_cg_beads), default=0)
-                                >= math.ceil(len(set(mol.ring_atoms_flat)) / 2))
+        ring_limit_reachable = candidates.reaches(math.ceil(len(set(mol.ring_atoms_flat)) / 2))
 
-        # Loop through best 1% cg_beads and avg_pos
-        max_attempts = int(math.ceil(0.5 * len(list_cg_beads)))
-        logger.info(f"Max. number of attempts: {max_attempts}")
+        # Each pass tries at most max_attempts = ceil(N / 2) of the N candidates. "attempt <
+        # max_attempts" is "more than 2 * attempt candidates", which needs only that many of them.
+        def below_max_attempts(attempt):
+            return candidates.more_than(2 * attempt)
+
+        def max_attempts():
+            return int(math.ceil(0.5 * len(candidates)))
+
+        if logger.isEnabledFor(logging.INFO):
+            logger.info(f"Max. number of attempts: {max_attempts()}")
         force_map = False
         attempt = 0
-        while attempt < max_attempts:
-            cg_beads = list_cg_beads[attempt]
+        while below_max_attempts(attempt):
+            cg_beads, bead_pos = candidates[attempt]
             passed, cg_beads_rings = self._check_candidate(
-                mol, options, cg_beads, list_bead_pos[attempt], list_cg_beads[0], force_map, ring_limit_reachable
+                mol, options, cg_beads, bead_pos, candidates[0][0], force_map, ring_limit_reachable
             )
             if passed:
                 self._write_topology(mol, options, cg_beads, cg_beads_rings)
                 print("Converged to solution in {} iteration(s)".format(
-                    attempt + 1 + (max_attempts if force_map else 0)))
+                    attempt + 1 + (max_attempts() if force_map else 0)))
                 return
             attempt += 1
             # AutoM3 change : force mapping by old code if new code doesn't give result
-            if attempt == max_attempts and not force_map:
+            if not force_map and not below_max_attempts(attempt):
                 force_map = True
                 attempt = 0
 
-        if attempt == max_attempts and force_map:
+        if force_map:
             raise RuntimeError(
                 "ERROR: no successful mapping found.\nTry running with the --fpred and/or --verbose options."
             )

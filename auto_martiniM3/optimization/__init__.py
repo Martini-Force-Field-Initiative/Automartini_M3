@@ -34,7 +34,9 @@ responsibility so each piece can be read (and tested) on its own:
 - energy             -- the Gaussian bead-placement objective function
 - partition          -- Voronoi-style atom-to-bead assignment
 - functional_groups  -- Ertl functional-group detection and its mapping checks
-- search             -- find_bead_pos(), the combinatorial search entry point
+- search             -- find_bead_pos(), the exhaustive combinatorial search
+- branch_and_bound   -- bead_candidates(), the same candidates best first and on
+                        demand (the solver's entry point)
 
 Every name below is re-exported so `auto_martiniM3.optimization.<name>` keeps
 working exactly as before the split.
@@ -55,6 +57,7 @@ from .functional_groups import (
     max2arperbead,
 )
 from .search import check_beads, find_bead_pos, all_atoms_in_beads_connected, worker_count
+from .branch_and_bound import bead_candidates, search_method
 
 __all__ = [
     "read_bead_params",
@@ -73,4 +76,6 @@ __all__ = [
     "find_bead_pos",
     "all_atoms_in_beads_connected",
     "worker_count",
+    "bead_candidates",
+    "search_method",
 ]
